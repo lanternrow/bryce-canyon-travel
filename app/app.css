@@ -1,0 +1,115 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+
+  --color-brand-50: #faf5f0;
+  --color-brand-100: #f0e6d8;
+  --color-brand-200: #e0ccb0;
+  --color-brand-300: #cda97d;
+  --color-brand-400: #c49261;
+  --color-brand-500: #b87a45;
+  --color-brand-600: #a4643a;
+  --color-brand-700: #894e32;
+  --color-brand-800: #6f402d;
+  --color-brand-900: #5b3627;
+
+  --color-primary: #c1440e;
+  --color-sand: #d4a574;
+  --color-sage: #7a8b6f;
+  --color-sky: #6ba3c7;
+  --color-stone: #8b7d6b;
+  --color-cream: #f5f0e8;
+  --color-dark: #2c2418;
+}
+
+html, body {
+  @apply bg-white text-gray-900;
+}
+
+/* Tailwind v4 removed cursor: pointer from interactive elements — restore it */
+button, [type="button"], [type="reset"], [type="submit"],
+a[href], label[for], select, summary,
+[role="button"], [role="tab"], [role="link"] {
+  cursor: pointer;
+}
+
+/* Hero banner overlay */
+.hero-overlay {
+  background: linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.4) 100%);
+}
+
+/* Filter sidebar */
+.filter-section summary {
+  cursor: pointer;
+  list-style: none;
+}
+.filter-section summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Price range buttons */
+.price-btn {
+  @apply px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium transition-colors cursor-pointer;
+}
+.price-btn.active {
+  @apply bg-dark text-white border-dark;
+}
+.price-btn:hover:not(.active) {
+  @apply bg-gray-100;
+}
+
+/* Listing cards */
+.listing-card {
+  @apply bg-white rounded-lg border border-gray-200 overflow-hidden transition-shadow hover:shadow-lg;
+}
+.listing-card img {
+  @apply w-full h-48 object-cover;
+}
+
+/* Star rating */
+.star-filled {
+  @apply text-amber-400;
+}
+.star-empty {
+  @apply text-gray-300;
+}
+
+/* Transparency checkerboard pattern for image previews */
+.checkerboard {
+  background-color: #ffffff;
+  background-image:
+    linear-gradient(45deg, #e5e5e5 25%, transparent 25%, transparent 75%, #e5e5e5 75%),
+    linear-gradient(45deg, #e5e5e5 25%, transparent 25%, transparent 75%, #e5e5e5 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 8px 8px;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* ---------- Leaflet map overrides (directory map view) ---------- */
+.zion-map-marker {
+  background: none !important;
+  border: none !important;
+}
+
+.zion-map-popup .leaflet-popup-content-wrapper {
+  border-radius: 10px;
+  padding: 0;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+}
+
+.zion-map-popup .leaflet-popup-content {
+  margin: 0;
+  line-height: 1.4;
+}
+
+.zion-map-popup .leaflet-popup-tip {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}

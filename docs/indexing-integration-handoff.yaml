@@ -1,0 +1,239 @@
+version: 1
+generated_for: zion-travel
+generated_on: 2026-03-05
+purpose: >
+  Reusable handoff config for cloning this project's search indexing setup
+  (Google sitemap submission, manual Google/Bing sitemap push, IndexNow on publish).
+
+features:
+  google_search_console_sitemap_submission:
+    enabled: true
+    mode:
+      - automatic_on_publish
+      - manual_all_sitemaps
+  bing_sitemap_submission:
+    enabled: true
+    mode:
+      - manual_all_sitemaps
+  bing_indexnow_submission:
+    enabled: true
+    mode:
+      - automatic_on_publish
+  bing_url_batch_submission:
+    enabled: true
+    mode:
+      - automatic_on_publish
+
+credentials_and_settings:
+  environment_variables:
+    - name: GOOGLE_SERVICE_ACCOUNT_JSON
+      required_for:
+        - google_search_console_api
+        - google_url_inspection_api
+      format: json_string
+      required_fields:
+        - client_email
+        - private_key
+        - token_uri
+      loaded_by: app/lib/google-auth.server.ts
+
+  settings_table_keys:
+    - key: gsc_site_url
+      used_for:
+        - Google Search Console siteUrl
+        - Bing Webmaster siteUrl
+      ui_location: /admin/monitoring/indexing (Configuration tab)
+      fallback_if_missing: https://zion.travel
+    - key: bing_api_key
+      used_for:
+        - Bing Webmaster API (feeds, crawl stats, URL batch, URL info)
+      ui_location: /admin/monitoring/indexing (Configuration tab)
+    - key: indexnow_api_key
+      used_for:
+        - IndexNow POST payload key
+      ui_location: /admin/monitoring/indexing (Configuration tab)
+    - key: allow_indexing
+      used_for:
+        - robots.txt allow/disallow mode
+      ui_location: /admin/settings (SEO tab)
+
+indexnow_key_file:
+  strategy: static_public_file
+  current_file_path: public/255d7327ace14d50a6774b9309ecca0f.txt
+  current_public_url: https://zion.travel/255d7327ace14d50a6774b9309ecca0f.txt
+  requirement: >
+    File name must be {indexnow_api_key}.txt and file body must equal indexnow_api_key.
+  note: >
+    If key changes, update/create matching file in /public and redeploy.
+
+external_api_calls:
+  google_search_console_submit_sitemap:
+    endpoint: https://www.googleapis.com/webmasters/v3/sites/{encodedSiteUrl}/sitemaps/{encodedSitemapUrl}
+    method: PUT
+    auth: "Bearer token from service account JWT"
+    code: app/lib/search-console.server.ts::submitSitemap
+  google_search_console_list_sitemaps:
+    endpoint: https://www.googleapis.com/webmasters/v3/sites/{encodedSiteUrl}/sitemaps
+    method: GET
+    auth: "Bearer token from service account JWT"
+    cache_ttl_ms: 3600000
+    code: app/lib/search-console.server.ts::listSitemaps
+  google_url_inspection:
+    endpoint: https://searchconsole.googleapis.com/v1/urlInspection/index:inspect
+    method: POST
+    auth: "Bearer token from service account JWT"
+    code: app/lib/search-console.server.ts::inspectUrl
+  bing_submit_feed:
+    endpoint: https://ssl.bing.com/webmaster/api.svc/json/SubmitFeed?apikey={bing_api_key}
+    method: POST
+    body: "{ siteUrl, feedUrl }"
+    code: app/lib/bing-webmaster.server.ts::submitBingFeed
+  bing_submit_url_batch:
+    endpoint: https://ssl.bing.com/webmaster/api.svc/json/SubmitUrlBatch?apikey={bing_api_key}
+    method: POST
+    body: "{ siteUrl, urlList }"
+    code: app/lib/bing-webmaster.server.ts::submitBingUrlBatch
+  indexnow_submit:
+    endpoint: https://api.indexnow.org/indexnow
+    method: POST
+    body:
+      host: "hardcoded in app/lib/indexnow.server.ts"
+      key: "{indexnow_api_key}"
+      keyLocation: "https://{host}/{indexnow_api_key}.txt"
+      urlList: "{changed urls}"
+    success_codes:
+      - 200
+      - 202
+    code: app/lib/indexnow.server.ts::notifyIndexNow
+
+route_wiring:
+  sitemap_routes:
+    - route: /sitemap.xml
+      file: app/routes/sitemap[.]xml.ts
+      role: sitemap index
+    - route: /sitemap-pages.xml
+      file: app/routes/sitemap-pages[.]xml.ts
+      role: static + custom pages sitemap
+    - route: /sitemap-listings.xml
+      file: app/routes/sitemap-listings[.]xml.ts
+      role: published listings sitemap
+    - route: /sitemap-posts.xml
+      file: app/routes/sitemap-posts[.]xml.ts
+      role: published blog posts sitemap
+    - route: /robots.txt
+      file: app/routes/robots[.]txt.ts
+      role: advertises sitemap index and blocks /admin + /api
+
+  admin_manual_submission_ui:
+    page: /admin/monitoring/indexing
+    file: app/routes/admin-monitoring-indexing.tsx
+    action_intents:
+      - intent: submit-sitemaps
+        action: submitAllSitemaps(siteUrl)
+        provider: Google
+      - intent: submit-sitemaps-bing
+        action: submitAllBingFeeds(siteUrl)
+        provider: Bing
+      - intent: save-gsc
+        action: update setting gsc_site_url
+      - intent: save-bing
+        action: update setting bing_api_key
+      - intent: save-indexnow
+        action: update setting indexnow_api_key
+
+automatic_publish_triggers:
+  orchestrator:
+    file: app/lib/seo-notify.server.ts
+    function: notifySearchEngines(changedUrls)
+    behavior:
+      - If URL includes /listing/: submit Google sitemap-listings.xml
+      - If URL is non-listing (blog/custom): submit Google sitemap-posts.xml
+      - If indexnow_api_key exists: notify IndexNow with changed URLs
+      - If bing_api_key exists: submit Bing URL batch with changed URLs
+    failure_model: fire_and_forget_logged_only
+
+  listing_publish_hook:
+    file: app/routes/admin-listing-edit.tsx
+    condition: status == "published"
+    submitted_url: "https://zion.travel/listing/{type}/{slug}"
+    call: notifySearchEngines([listingUrl])
+
+  post_publish_hook:
+    file: app/routes/admin-post-edit.tsx
+    condition: status == "published"
+    submitted_url: "https://zion.travel/{slug}"
+    call: notifySearchEngines([postUrl])
+
+manual_operations:
+  google_submit_all_sitemaps:
+    ui_path: /admin/monitoring/indexing
+    button_label: Submit to Google
+    submits:
+      - /sitemap.xml
+      - /sitemap-pages.xml
+      - /sitemap-listings.xml
+      - /sitemap-posts.xml
+  bing_submit_all_sitemaps:
+    ui_path: /admin/monitoring/indexing
+    button_label: Submit to Bing
+    submits:
+      - /sitemap.xml
+      - /sitemap-pages.xml
+      - /sitemap-listings.xml
+      - /sitemap-posts.xml
+  google_url_inspection:
+    ui_path: /admin/monitoring/indexing
+    section: URL Inspection
+    backend: app/lib/search-console.server.ts::inspectUrl
+
+hardcoded_values_to_replace_for_new_site:
+  critical:
+    - file: app/lib/indexnow.server.ts
+      value: host = "zion.travel"
+      replacement: new domain host only (no protocol)
+    - file: app/routes/sitemap[.]xml.ts
+      value: baseUrl = "https://zion.travel"
+    - file: app/routes/sitemap-pages[.]xml.ts
+      value: baseUrl = "https://zion.travel"
+    - file: app/routes/sitemap-listings[.]xml.ts
+      value: baseUrl = "https://zion.travel"
+    - file: app/routes/sitemap-posts[.]xml.ts
+      value: baseUrl = "https://zion.travel"
+    - file: app/routes/robots[.]txt.ts
+      value: baseUrl = "https://zion.travel"
+    - file: app/routes/admin-listing-edit.tsx
+      value: published listing URL uses https://zion.travel
+    - file: app/routes/admin-post-edit.tsx
+      value: published post URL uses https://zion.travel
+  recommended:
+    - centralize SITE_URL + HOST in one config module and import everywhere
+    - generate indexnow key file dynamically from setting, or enforce static file update in deployment checklist
+
+verification_checklist:
+  - Set gsc_site_url, bing_api_key, indexnow_api_key in admin monitoring config.
+  - Set GOOGLE_SERVICE_ACCOUNT_JSON env var in runtime.
+  - Confirm /robots.txt includes Sitemap line.
+  - Confirm /sitemap.xml, /sitemap-pages.xml, /sitemap-listings.xml, /sitemap-posts.xml return 200.
+  - Confirm https://{domain}/{indexnow_api_key}.txt returns key body exactly.
+  - Publish one listing and confirm logs show:
+    - GSC sub-sitemap submit attempt
+    - IndexNow notify attempt
+    - Bing URL batch submit attempt
+  - Use /admin/monitoring/indexing buttons to submit all sitemaps to Google and Bing.
+  - Run URL Inspection in /admin/monitoring/indexing for a published URL.
+
+reference_file_map:
+  - app/lib/google-auth.server.ts
+  - app/lib/search-console.server.ts
+  - app/lib/bing-webmaster.server.ts
+  - app/lib/indexnow.server.ts
+  - app/lib/seo-notify.server.ts
+  - app/routes/admin-monitoring-indexing.tsx
+  - app/routes/admin-listing-edit.tsx
+  - app/routes/admin-post-edit.tsx
+  - app/routes/robots[.]txt.ts
+  - app/routes/sitemap[.]xml.ts
+  - app/routes/sitemap-pages[.]xml.ts
+  - app/routes/sitemap-listings[.]xml.ts
+  - app/routes/sitemap-posts[.]xml.ts
+  - public/255d7327ace14d50a6774b9309ecca0f.txt

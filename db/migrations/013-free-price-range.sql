@@ -1,0 +1,5 @@
+-- Add 'free' to the price_range options
+-- The price_range column is TEXT (no enum constraint), so no ALTER needed.
+-- This migration exists for documentation: the valid values are now:
+--   'free', '$', '$$', '$$$', '$$$$'
+-- Supports free attractions like hiking trails, city parks, and free museums.
