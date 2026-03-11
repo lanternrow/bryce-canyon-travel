@@ -10,18 +10,22 @@ import { lookupRedirect, handleRedirectHit } from "./lib/redirect-cache.server";
 
 export const streamTimeout = 5_000;
 
+// Store last error for debug endpoint
+let _lastError: { pathname: string; message: string; stack: string; time: string } | null = null;
+export function getLastError() { return _lastError; }
+
 export function handleError(
   error: unknown,
   { request }: { request: Request }
 ) {
   const url = new URL(request.url);
-  console.error(`[handleError] ${request.method} ${url.pathname}`);
-  if (error instanceof Error) {
-    console.error(`[handleError] ${error.message}`);
-    console.error(`[handleError] ${error.stack}`);
-  } else {
-    console.error(`[handleError]`, error);
-  }
+  const pathname = url.pathname;
+  const message = error instanceof Error ? error.message : String(error);
+  const stack = error instanceof Error ? error.stack || "" : "";
+  _lastError = { pathname, message, stack, time: new Date().toISOString() };
+  console.error(`[handleError] ${request.method} ${pathname}`);
+  console.error(`[handleError] message: ${message}`);
+  console.error(`[handleError] stack: ${stack}`);
 }
 
 export default async function handleRequest(
