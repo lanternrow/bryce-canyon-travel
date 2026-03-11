@@ -208,6 +208,18 @@ export const siteConfig = {
       "Escalante is a small adventure hub along Scenic Byway 12, roughly an hour east of Bryce Canyon. The town is the primary gateway to Grand Staircase-Escalante National Monument and offers outfitters, restaurants, and lodging for hikers and canyoneers exploring the region's slot canyons and arches.",
     "Cedar City":
       "Cedar City, home to Southern Utah University and the Utah Shakespeare Festival, sits about 80 miles west of Bryce Canyon. The city has the nearest regional airport and provides a full range of urban amenities, making it a convenient base for visitors exploring both Bryce Canyon and Cedar Breaks National Monument.",
+    Widtsoe:
+      "Widtsoe is a ghost town area in Johns Valley along Scenic Byway 12 between Bryce Canyon and Escalante. The surrounding high-plateau ranchland offers wide-open views of the Aquarius Plateau and a glimpse into southern Utah's homesteading past.",
+    "Panguitch Lake Resort":
+      "Panguitch Lake Resort is a small recreation area near Panguitch Lake along Highway 143 in the Dixie National Forest. The lake draws visitors for fishing, boating, and camping at over 8,000 feet elevation, with easy access to both Bryce Canyon and Cedar Breaks.",
+    "Duck Creek Village":
+      "Duck Creek Village is a mountain community along Highway 14 in the Dixie National Forest at about 8,500 feet elevation. Popular year-round for snowmobiling, cross-country skiing, ATV riding, and fishing, it offers a cool alpine retreat between Bryce Canyon and Cedar Breaks.",
+    Alton:
+      "Alton is a small agricultural community south of Bryce Canyon along Highway 89. Situated in a scenic valley between the park and the highway corridor to Zion, it provides a quiet rural setting with views of the surrounding red rock country.",
+    Glendale:
+      "Glendale is a quiet community along Highway 89 in the Upper Virgin River valley between Bryce Canyon and Zion National Park. Its location midway between the two parks makes it a convenient stop for travelers exploring both destinations.",
+    Orderville:
+      "Orderville is a small town along Highway 89 just north of the east entrance to Zion National Park. Originally founded as a United Order community, it now serves as a convenient stop between Bryce Canyon and Zion with a handful of lodging and dining options.",
     Kanab:
       "Kanab, known as \"Little Hollywood\" for its filming history, sits south of Bryce Canyon near the Arizona border. The town serves as a hub for multi-park itineraries covering Bryce Canyon, Zion, Grand Canyon North Rim, and the famous Wave permit area.",
     "Bryce Canyon National Park":
@@ -221,18 +233,27 @@ export const siteConfig = {
   // ── Discovery Towns (for Google Places business scanning) ──
   // Each entry defines a town center + search radius for the Discover Listings tool.
   // To find coordinates: search the town on Google Maps, right-click → "What's here?"
-  // Radius is in meters — 8000–10000 for small towns, 15000–20000 for cities.
+  // Radius is in meters — 25 mi ≈ 40234m, 10 mi ≈ 16093m.
   discoveryTowns: [
-    // Gateway
-    { name: "Bryce Canyon City", lat: 37.672, lng: -112.156, radius: 15000 },
-    { name: "Tropic", lat: 37.6188, lng: -112.0815, radius: 10000 },
-    { name: "Cannonville", lat: 37.5714, lng: -112.057, radius: 8000 },
-    // Nearby
-    { name: "Panguitch", lat: 37.8228, lng: -112.4356, radius: 15000 },
-    { name: "Hatch", lat: 37.651, lng: -112.4317, radius: 10000 },
-    { name: "Escalante", lat: 37.7702, lng: -111.6021, radius: 15000 },
-    // Regional
-    { name: "Cedar City", lat: 37.6775, lng: -113.0619, radius: 20000 },
+    // Gateway (25-mile radius)
+    { name: "Bryce Canyon City", lat: 37.672, lng: -112.156, radius: 40234 },
+    // East side of Bryce Canyon
+    { name: "Tropic", lat: 37.6188, lng: -112.0815, radius: 16093 },
+    { name: "Cannonville", lat: 37.5714, lng: -112.057, radius: 16093 },
+    { name: "Henrieville", lat: 37.5628, lng: -111.9944, radius: 16093 },
+    // North / Highway 89 corridor
+    { name: "Panguitch", lat: 37.8228, lng: -112.4356, radius: 16093 },
+    { name: "Hatch", lat: 37.651, lng: -112.4317, radius: 16093 },
+    // Scenic Byway 12 east
+    { name: "Escalante", lat: 37.7702, lng: -111.6021, radius: 16093 },
+    { name: "Widtsoe", lat: 37.8322, lng: -111.9950, radius: 16093 },
+    // Mountain / Highway 143
+    { name: "Panguitch Lake Resort", lat: 37.7082, lng: -112.6417, radius: 16093 },
+    { name: "Duck Creek Village", lat: 37.5236, lng: -112.6630, radius: 16093 },
+    // South / Highway 89 toward Zion
+    { name: "Alton", lat: 37.4378, lng: -112.4827, radius: 16093 },
+    { name: "Glendale", lat: 37.3258, lng: -112.6008, radius: 16093 },
+    { name: "Orderville", lat: 37.2758, lng: -112.6377, radius: 16093 },
   ] as Array<{ name: string; lat: number; lng: number; radius: number }>,
 
   // ── Color Palette (defaults — overridable in admin) ─
