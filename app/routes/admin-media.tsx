@@ -26,33 +26,28 @@ export function meta() {
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
-  try {
-    await requireAuth(request);
-    const url = new URL(request.url);
-    const search = url.searchParams.get("q") || "";
-    const folderParam = url.searchParams.get("folder");
+  await requireAuth(request);
+  const url = new URL(request.url);
+  const search = url.searchParams.get("q") || "";
+  const folderParam = url.searchParams.get("folder");
 
-    const folderId =
-      folderParam === "unfiled"
-        ? ("unfiled" as const)
-        : folderParam
-          ? Number(folderParam)
-          : null;
+  const folderId =
+    folderParam === "unfiled"
+      ? ("unfiled" as const)
+      : folderParam
+        ? Number(folderParam)
+        : null;
 
-    const [media, folderTree] = await Promise.all([
-      getMedia({ limit: 100, search, folderId }),
-      getMediaFolderTree(),
-    ]);
+  const [media, folderTree] = await Promise.all([
+    getMedia({ limit: 100, search, folderId }),
+    getMediaFolderTree(),
+  ]);
 
-    const urls = (media as any[]).map((m: any) => m.url).filter(Boolean);
-    const usageCounts = await getMediaUsageCounts(urls);
+  const urls = (media as any[]).map((m: any) => m.url).filter(Boolean);
+  const usageCounts = await getMediaUsageCounts(urls);
 
-    const r2Ready = isR2Configured();
-    return { media, folderTree, r2Ready, search, usageCounts, currentFolder: folderParam };
-  } catch (e: any) {
-    console.error("[admin-media loader]", e);
-    throw new Response(JSON.stringify({ error: e.message, stack: e.stack }), { status: 500, headers: { "Content-Type": "application/json" } });
-  }
+  const r2Ready = isR2Configured();
+  return { media, folderTree, r2Ready, search, usageCounts, currentFolder: folderParam };
 }
 
 export async function action({ request }: Route.ActionArgs) {
