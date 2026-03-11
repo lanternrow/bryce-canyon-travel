@@ -35,6 +35,7 @@ const DEFAULT_HOME = {
     title_size_desktop: 72,
     title_color: "#ffffff",
     accent_color: "#d4a574",
+    hero_max_width: 1024,
   },
   explore: {
     title: siteConfig.defaults.exploreTitle,
@@ -385,6 +386,7 @@ export default function HomePage({ loaderData }: Route.ComponentProps) {
   const titleFontSize = `clamp(${mobilePx}px, 5vw + 0.5rem, ${desktopPx}px)`;
   const titleColor = (hero as any).title_color || "#ffffff";
   const accentColor = (hero as any).accent_color || "#d4a574";
+  const heroMaxWidth = (hero as any).hero_max_width || 1024;
 
   const titleLines = [
     { key: "line1", text: c.hero.title_line1 },
@@ -419,7 +421,7 @@ export default function HomePage({ loaderData }: Route.ComponentProps) {
             style={{ background: gradientBg, opacity: gradOpacity / 100 }}
           />
 
-          <div className="relative z-10 text-center px-4 max-w-4xl mx-auto">
+          <div className="relative z-10 text-center px-4 mx-auto" style={{ maxWidth: `${heroMaxWidth}px` }}>
             <p className="text-sand/90 uppercase tracking-[0.25em] text-sm font-medium mb-4">
               {c.hero.subtitle}
             </p>

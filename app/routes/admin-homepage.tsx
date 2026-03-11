@@ -35,6 +35,7 @@ const DEFAULT_HOME = {
     title_size_desktop: 72,
     title_color: "#ffffff",
     accent_color: "#d4a574",
+    hero_max_width: 1024,
   },
   explore: {
     title: siteConfig.defaults.exploreTitle,
@@ -473,6 +474,38 @@ export default function AdminPages() {
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Container Width */}
+            <div className="border-t border-gray-200 pt-4 mt-2">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Container Width</p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="range"
+                  min={600}
+                  max={1400}
+                  step={10}
+                  value={(data.hero as any).hero_max_width || 1024}
+                  onChange={(e) => update("hero.hero_max_width", Number(e.target.value))}
+                  className="flex-1 accent-primary"
+                />
+                <div className="flex items-center">
+                  <input
+                    type="number"
+                    min={600}
+                    max={1400}
+                    step={10}
+                    value={(data.hero as any).hero_max_width || 1024}
+                    onChange={(e) => {
+                      const v = Math.min(1400, Math.max(600, Number(e.target.value) || 600));
+                      update("hero.hero_max_width", v);
+                    }}
+                    className="w-16 px-1.5 py-1 border border-gray-300 rounded-lg text-xs text-center font-mono focus:outline-none focus:border-primary"
+                  />
+                  <span className="text-[10px] text-gray-400 ml-1">px</span>
+                </div>
+              </div>
+              <p className="text-[11px] text-gray-400 mt-1">Controls how wide the hero title and description area can be.</p>
             </div>
 
             <div>
