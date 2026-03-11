@@ -258,13 +258,13 @@ export const siteConfig = {
 
   // ── Color Palette (defaults — overridable in admin) ─
   colors: {
-    primary: { key: "color_primary", label: "Primary", default: "#d4652a" },
-    sand: { key: "color_sand", label: "Sand", default: "#d4a574" },
-    sage: { key: "color_sage", label: "Sage", default: "#7a8b6f" },
-    sky: { key: "color_sky", label: "Sky", default: "#6ba3c7" },
-    stone: { key: "color_stone", label: "Stone", default: "#8b7d6b" },
-    cream: { key: "color_cream", label: "Cream", default: "#f5f0e8" },
-    dark: { key: "color_dark", label: "Dark", default: "#2c2418" },
+    primary: { key: "color_primary", label: "Primary", default: "#c2623b" },
+    sand: { key: "color_sand", label: "Sand", default: "#d4a06a" },
+    sage: { key: "color_sage", label: "Sage", default: "#6a8b6d" },
+    sky: { key: "color_sky", label: "Sky", default: "#7caec8" },
+    stone: { key: "color_stone", label: "Stone", default: "#967a68" },
+    cream: { key: "color_cream", label: "Cream", default: "#f5ece1" },
+    dark: { key: "color_dark", label: "Dark", default: "#2d2116" },
   },
 } as const;
 
