@@ -1,4 +1,4 @@
-import { Link, useLoaderData, Form, redirect, useNavigation, useSearchParams, useFetcher } from "react-router";
+import { Link, useLoaderData, Form, redirect, useNavigation, useSearchParams, useFetcher, isRouteErrorResponse, useRouteError } from "react-router";
 import type { Route } from "./+types/admin-media";
 import { useRef, useState, useEffect, useCallback } from "react";
 import { requireAuth } from "../lib/auth.server";
@@ -1663,6 +1663,43 @@ export default function AdminMedia() {
           onClose={() => setEditingId(null)}
         />
       )}
+    </div>
+  );
+}
+
+export function ErrorBoundary() {
+  const error = useRouteError();
+  let title = "Media Library Error";
+  let message = "An unknown error occurred.";
+  let details = "";
+
+  if (isRouteErrorResponse(error)) {
+    title = `${error.status} – Media Library`;
+    message = typeof error.data === "string" ? error.data : JSON.stringify(error.data, null, 2);
+    details = `Status: ${error.status} ${error.statusText}`;
+  } else if (error instanceof Error) {
+    message = error.message;
+    details = error.stack || "";
+  } else if (typeof error === "string") {
+    message = error;
+  }
+
+  return (
+    <div className="p-8 max-w-3xl mx-auto">
+      <h1 className="text-2xl font-bold text-red-600 mb-4">{title}</h1>
+      <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-4">
+        <p className="text-red-800 font-medium mb-2">Error Message:</p>
+        <pre className="text-sm text-red-700 whitespace-pre-wrap break-words">{message}</pre>
+      </div>
+      {details && (
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
+          <p className="text-gray-600 font-medium mb-2">Details:</p>
+          <pre className="text-xs text-gray-500 whitespace-pre-wrap break-words">{details}</pre>
+        </div>
+      )}
+      <a href="/admin/media" className="mt-4 inline-block text-primary underline">
+        Try again
+      </a>
     </div>
   );
 }
