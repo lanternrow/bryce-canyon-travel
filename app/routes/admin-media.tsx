@@ -19,6 +19,7 @@ import {
 import type { MediaFolderTreeNode } from "../lib/queries.server";
 import { uploadToR2, deleteFromR2, isR2Configured } from "../lib/storage.server";
 import { formatShortDate } from "../lib/format";
+import { toast } from "sonner";
 import { siteConfig } from "../lib/site-config";
 
 export function meta() {
@@ -55,150 +56,156 @@ export async function action({ request }: Route.ActionArgs) {
   const formData = await request.formData();
   const intent = formData.get("intent") as string;
 
-  if (intent === "delete") {
-    const id = formData.get("id") as string;
-    const url = formData.get("url") as string;
-    if (isR2Configured() && url) {
-      try {
-        await deleteFromR2(url);
-      } catch (e) {
-        console.error("R2 delete error:", e);
-      }
-    }
-    if (url) await deleteMediaUsageByUrl(url);
-    await deleteMedia(id);
-    return { ok: true, deleted: true };
-  }
-
-  if (intent === "update") {
-    const id = formData.get("id") as string;
-    const filename = (formData.get("filename") as string) || undefined;
-    const alt_text = (formData.get("alt_text") as string) || "";
-    const title = (formData.get("title") as string) || "";
-    const caption = (formData.get("caption") as string) || "";
-    const description = (formData.get("description") as string) || "";
-    const folder_id = formData.get("folder_id")
-      ? Number(formData.get("folder_id"))
-      : null;
-    await updateMedia(id, { filename, alt_text, title, caption, description, folder_id });
-    return { ok: true, updated: true };
-  }
-
-  if (intent === "upload") {
-    const files = formData.getAll("files") as File[];
-    const rawTargetFolder = String(formData.get("target_folder_id") || "").trim();
-    const uploadFolderId =
-      rawTargetFolder &&
-      rawTargetFolder !== "unfiled" &&
-      Number.isFinite(Number(rawTargetFolder))
-        ? Number(rawTargetFolder)
-        : null;
-    const returnFolder = String(formData.get("return_folder") || "").trim();
-    const returnSearch = String(formData.get("return_search") || "").trim();
-    let uploaded = 0;
-    let uploadError = "";
-
-    for (const file of files) {
-      if (!file || file.size === 0) continue;
-
-      try {
-        if (isR2Configured()) {
-          const result = await uploadToR2(file);
-          const autoTitle = result.filename
-            .replace(/\.[^.]+$/, "")
-            .replace(/[-_]/g, " ")
-            .replace(/\b\w/g, (c) => c.toUpperCase());
-          await createMedia({
-            filename: result.filename,
-            url: result.url,
-            mime_type: result.mimeType,
-            size_bytes: result.size,
-            title: autoTitle,
-            folder_id: uploadFolderId,
-          });
-        } else {
-          await createMedia({
-            filename: file.name,
-            url: `/placeholder/${file.name}`,
-            mime_type: file.type,
-            size_bytes: file.size,
-            folder_id: uploadFolderId,
-          });
+  try {
+    if (intent === "delete") {
+      const id = formData.get("id") as string;
+      const url = formData.get("url") as string;
+      if (isR2Configured() && url) {
+        try {
+          await deleteFromR2(url);
+        } catch (e) {
+          console.error("R2 delete error:", e);
         }
-        uploaded++;
-      } catch (e: any) {
-        console.error("Upload error:", e);
-        uploadError = e.message || "Upload failed";
       }
+      if (url) await deleteMediaUsageByUrl(url);
+      await deleteMedia(id);
+      return { ok: true, deleted: true };
     }
 
-    const params = new URLSearchParams();
-    if (returnSearch) params.set("q", returnSearch);
-    if (returnFolder) params.set("folder", returnFolder);
-    if (uploadError) {
-      params.set("toast", `Upload failed: ${uploadError}`);
-      params.set("toast_type", "error");
-    } else {
-      params.set("toast", `${uploaded} file${uploaded !== 1 ? "s" : ""} uploaded`);
+    if (intent === "update") {
+      const id = formData.get("id") as string;
+      const filename = (formData.get("filename") as string) || undefined;
+      const alt_text = (formData.get("alt_text") as string) || "";
+      const title = (formData.get("title") as string) || "";
+      const caption = (formData.get("caption") as string) || "";
+      const description = (formData.get("description") as string) || "";
+      const folder_id = formData.get("folder_id")
+        ? Number(formData.get("folder_id"))
+        : null;
+      await updateMedia(id, { filename, alt_text, title, caption, description, folder_id });
+      return { ok: true, updated: true };
     }
 
-    return redirect(`/admin/media?${params.toString()}`);
-  }
+    if (intent === "upload") {
+      const files = formData.getAll("files") as File[];
+      const rawTargetFolder = String(formData.get("target_folder_id") || "").trim();
+      const uploadFolderId =
+        rawTargetFolder &&
+        rawTargetFolder !== "unfiled" &&
+        Number.isFinite(Number(rawTargetFolder))
+          ? Number(rawTargetFolder)
+          : null;
+      const returnFolder = String(formData.get("return_folder") || "").trim();
+      const returnSearch = String(formData.get("return_search") || "").trim();
+      let uploaded = 0;
+      let uploadError = "";
 
-  // ── Folder management ──
+      for (const file of files) {
+        if (!file || file.size === 0) continue;
 
-  if (intent === "create-folder") {
-    const name = (formData.get("folder_name") as string).trim();
-    const parentId = formData.get("parent_id") ? Number(formData.get("parent_id")) : null;
-    if (name) {
-      const slug = name
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, "");
-      await createMediaFolder({ name, slug, parent_id: parentId });
+        try {
+          if (isR2Configured()) {
+            const result = await uploadToR2(file);
+            const autoTitle = result.filename
+              .replace(/\.[^.]+$/, "")
+              .replace(/[-_]/g, " ")
+              .replace(/\b\w/g, (c) => c.toUpperCase());
+            await createMedia({
+              filename: result.filename,
+              url: result.url,
+              mime_type: result.mimeType,
+              size_bytes: result.size,
+              title: autoTitle,
+              folder_id: uploadFolderId,
+            });
+          } else {
+            await createMedia({
+              filename: file.name,
+              url: `/placeholder/${file.name}`,
+              mime_type: file.type,
+              size_bytes: file.size,
+              folder_id: uploadFolderId,
+            });
+          }
+          uploaded++;
+        } catch (e: any) {
+          console.error("Upload error:", e);
+          uploadError = e.message || "Upload failed";
+        }
+      }
+
+      const params = new URLSearchParams();
+      if (returnSearch) params.set("q", returnSearch);
+      if (returnFolder) params.set("folder", returnFolder);
+      if (uploadError) {
+        params.set("toast", `Upload failed: ${uploadError}`);
+        params.set("toast_type", "error");
+      } else {
+        params.set("toast", `${uploaded} file${uploaded !== 1 ? "s" : ""} uploaded`);
+      }
+
+      return redirect(`/admin/media?${params.toString()}`);
     }
-    return { ok: true, folderCreated: true };
-  }
 
-  if (intent === "rename-folder") {
-    const id = Number(formData.get("folder_id"));
-    const name = (formData.get("folder_name") as string).trim();
-    if (name && id) {
-      const slug = name
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, "");
-      await renameMediaFolder(id, name, slug);
+    // ── Folder management ──
+
+    if (intent === "create-folder") {
+      const name = (formData.get("folder_name") as string).trim();
+      const parentId = formData.get("parent_id") ? Number(formData.get("parent_id")) : null;
+      if (name) {
+        const slug = name
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-|-$/g, "");
+        await createMediaFolder({ name, slug, parent_id: parentId });
+      }
+      return { ok: true, folderCreated: true };
     }
-    return { ok: true, folderRenamed: true };
+
+    if (intent === "rename-folder") {
+      const id = Number(formData.get("folder_id"));
+      const name = (formData.get("folder_name") as string).trim();
+      if (name && id) {
+        const slug = name
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-|-$/g, "");
+        await renameMediaFolder(id, name, slug);
+      }
+      return { ok: true, folderRenamed: true };
+    }
+
+    if (intent === "delete-folder") {
+      const id = Number(formData.get("folder_id"));
+      if (id) await deleteMediaFolder(id);
+      return { ok: true, folderDeleted: true };
+    }
+
+    // ── Move media to folder (drag-and-drop) ──
+
+    if (intent === "move-to-folder") {
+      const mediaIds = JSON.parse((formData.get("media_ids") as string) || "[]");
+      const targetFolderId = formData.get("target_folder_id")
+        ? Number(formData.get("target_folder_id"))
+        : null;
+      await moveMediaToFolder(mediaIds, targetFolderId);
+      return { ok: true, moved: true };
+    }
+
+    // ── Usage lookup (for edit panel) ──
+
+    if (intent === "get-usage") {
+      const url = formData.get("url") as string;
+      const usage = url ? await getMediaUsage(url) : [];
+      return { ok: true, usage };
+    }
+
+    return redirect("/admin/media");
+  } catch (e: any) {
+    console.error(`[admin-media action] intent=${intent} error:`, e);
+    // Return error as data so the page doesn't crash
+    return { ok: false, error: e.message || "An unexpected error occurred", intent };
   }
-
-  if (intent === "delete-folder") {
-    const id = Number(formData.get("folder_id"));
-    if (id) await deleteMediaFolder(id);
-    return { ok: true, folderDeleted: true };
-  }
-
-  // ── Move media to folder (drag-and-drop) ──
-
-  if (intent === "move-to-folder") {
-    const mediaIds = JSON.parse((formData.get("media_ids") as string) || "[]");
-    const targetFolderId = formData.get("target_folder_id")
-      ? Number(formData.get("target_folder_id"))
-      : null;
-    await moveMediaToFolder(mediaIds, targetFolderId);
-    return { ok: true, moved: true };
-  }
-
-  // ── Usage lookup (for edit panel) ──
-
-  if (intent === "get-usage") {
-    const url = formData.get("url") as string;
-    const usage = url ? await getMediaUsage(url) : [];
-    return { ok: true, usage };
-  }
-
-  return redirect("/admin/media");
 }
 
 function formatBytes(bytes: number | null) {
@@ -810,7 +817,10 @@ function EditPanel({
   // Detect save completion
   const prevState = useRef(fetcher.state);
   if (prevState.current === "submitting" && fetcher.state === "idle") {
-    if (!showSaved) {
+    const data = fetcher.data as any;
+    if (data?.ok === false) {
+      toast.error(data.error || "Save failed");
+    } else if (!showSaved) {
       setShowSaved(true);
       setTimeout(() => setShowSaved(false), 2000);
     }
