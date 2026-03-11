@@ -4,15 +4,16 @@ import type { ResolvedMenuItem } from "../lib/menus.server";
 import { siteConfig } from "../lib/site-config";
 
 const defaultNavLinks: NavLink[] = [
+  { label: "Home", href: "/", openInNewTab: false, children: [] },
+  { label: "Lodging", href: "/lodging", openInNewTab: false, children: [] },
+  { label: "Dining", href: "/dining", openInNewTab: false, children: [] },
   { label: "Things To Do", href: "/experiences", openInNewTab: false, children: [
     { label: "Experiences", href: "/experiences", openInNewTab: false },
     { label: "Hiking", href: "/hiking", openInNewTab: false },
     { label: "Parks", href: "/parks", openInNewTab: false },
-    { label: "Golf", href: "/golf", openInNewTab: false },
   ]},
-  { label: "Lodging", href: "/lodging", openInNewTab: false, children: [] },
-  { label: "Dining", href: "/dining", openInNewTab: false, children: [] },
   { label: "Plan Your Trip", href: "/transportation", openInNewTab: false, children: [
+    { label: "View All Listings", href: "/listings", openInNewTab: false },
     { label: "Transportation", href: "/transportation", openInNewTab: false },
   ]},
   { label: "News", href: "/news", openInNewTab: false, children: [] },
