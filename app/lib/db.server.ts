@@ -11,6 +11,7 @@ const sql = postgres(connectionString || "", {
   max: 10,
   idle_timeout: 20,
   connect_timeout: 10,
+  prepare: false, // Required for Neon pooled connections — avoids "cached plan must not change result type" errors
 });
 
 export default sql;
