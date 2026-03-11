@@ -1,4 +1,4 @@
-import { Link, useLoaderData, Form, redirect, useNavigation, useSearchParams, useFetcher, isRouteErrorResponse, useRouteError } from "react-router";
+import { Link, useLoaderData, Form, redirect, useNavigation, useSearchParams, useFetcher } from "react-router";
 import type { Route } from "./+types/admin-media";
 import { useRef, useState, useEffect, useCallback } from "react";
 import { requireAuth } from "../lib/auth.server";
@@ -38,29 +38,16 @@ export async function loader({ request }: Route.LoaderArgs) {
         ? Number(folderParam)
         : null;
 
-  try {
-    const [media, folderTree] = await Promise.all([
-      getMedia({ limit: 100, search, folderId }),
-      getMediaFolderTree(),
-    ]);
+  const [media, folderTree] = await Promise.all([
+    getMedia({ limit: 100, search, folderId }),
+    getMediaFolderTree(),
+  ]);
 
-    const urls = (media as any[]).map((m: any) => m.url).filter(Boolean);
-    const usageCounts = await getMediaUsageCounts(urls);
+  const urls = (media as any[]).map((m: any) => m.url).filter(Boolean);
+  const usageCounts = await getMediaUsageCounts(urls);
 
-    const r2Ready = isR2Configured();
-    return { media, folderTree, r2Ready, search, usageCounts, currentFolder: folderParam };
-  } catch (e) {
-    // Re-throw Response objects (e.g. redirects) as-is
-    if (e instanceof Response) throw e;
-    // Surface actual error details to the ErrorBoundary via Response data
-    const msg = e instanceof Error ? e.message : String(e);
-    const stack = e instanceof Error ? e.stack : "";
-    console.error("[admin-media loader error]", msg, stack);
-    throw new Response(
-      JSON.stringify({ error: msg, stack }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
-    );
-  }
+  const r2Ready = isR2Configured();
+  return { media, folderTree, r2Ready, search, usageCounts, currentFolder: folderParam };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -1675,57 +1662,3 @@ export default function AdminMedia() {
   );
 }
 
-export function ErrorBoundary() {
-  const error = useRouteError();
-  let title = "Media Library Error";
-  let message = "An unknown error occurred.";
-  let details = "";
-
-  if (isRouteErrorResponse(error)) {
-    title = `${error.status} – Media Library`;
-    // Try to parse JSON error data from our custom Response
-    if (typeof error.data === "string") {
-      try {
-        const parsed = JSON.parse(error.data);
-        message = parsed.error || error.data;
-        details = parsed.stack || "";
-      } catch {
-        message = error.data;
-      }
-    } else if (error.data && typeof error.data === "object") {
-      message = (error.data as any).error || JSON.stringify(error.data, null, 2);
-      details = (error.data as any).stack || "";
-    }
-    if (!details) {
-      details = `Status: ${error.status} ${error.statusText}`;
-    }
-  } else if (error instanceof Error) {
-    message = error.message;
-    details = error.stack || "";
-  } else if (typeof error === "string") {
-    message = error;
-  }
-
-  return (
-    <div className="p-8 max-w-3xl mx-auto">
-      <h1 className="text-2xl font-bold text-red-600 mb-4">{title}</h1>
-      <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-4">
-        <p className="text-red-800 font-medium mb-2">Error Message:</p>
-        <pre className="text-sm text-red-700 whitespace-pre-wrap break-words">{message}</pre>
-      </div>
-      {details && (
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
-          <p className="text-gray-600 font-medium mb-2">Stack Trace:</p>
-          <pre className="text-xs text-gray-500 whitespace-pre-wrap break-words">{details}</pre>
-        </div>
-      )}
-      <p className="mt-4 text-sm text-gray-400">
-        Raw error type: {typeof error === "object" && error !== null ? error.constructor?.name || "object" : typeof error}
-        {isRouteErrorResponse(error) && ` | status=${error.status} | data type=${typeof error.data}`}
-      </p>
-      <a href="/admin/media" className="mt-6 inline-block text-primary underline">
-        Try again
-      </a>
-    </div>
-  );
-}
