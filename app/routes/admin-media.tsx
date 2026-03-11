@@ -96,40 +96,50 @@ export async function action({ request }: Route.ActionArgs) {
     const returnFolder = String(formData.get("return_folder") || "").trim();
     const returnSearch = String(formData.get("return_search") || "").trim();
     let uploaded = 0;
+    let uploadError = "";
 
     for (const file of files) {
       if (!file || file.size === 0) continue;
 
-      if (isR2Configured()) {
-        const result = await uploadToR2(file);
-        const autoTitle = result.filename
-          .replace(/\.[^.]+$/, "")
-          .replace(/[-_]/g, " ")
-          .replace(/\b\w/g, (c) => c.toUpperCase());
-        await createMedia({
-          filename: result.filename,
-          url: result.url,
-          mime_type: result.mimeType,
-          size_bytes: result.size,
-          title: autoTitle,
-          folder_id: uploadFolderId,
-        });
-      } else {
-        await createMedia({
-          filename: file.name,
-          url: `/placeholder/${file.name}`,
-          mime_type: file.type,
-          size_bytes: file.size,
-          folder_id: uploadFolderId,
-        });
+      try {
+        if (isR2Configured()) {
+          const result = await uploadToR2(file);
+          const autoTitle = result.filename
+            .replace(/\.[^.]+$/, "")
+            .replace(/[-_]/g, " ")
+            .replace(/\b\w/g, (c) => c.toUpperCase());
+          await createMedia({
+            filename: result.filename,
+            url: result.url,
+            mime_type: result.mimeType,
+            size_bytes: result.size,
+            title: autoTitle,
+            folder_id: uploadFolderId,
+          });
+        } else {
+          await createMedia({
+            filename: file.name,
+            url: `/placeholder/${file.name}`,
+            mime_type: file.type,
+            size_bytes: file.size,
+            folder_id: uploadFolderId,
+          });
+        }
+        uploaded++;
+      } catch (e: any) {
+        console.error("Upload error:", e);
+        uploadError = e.message || "Upload failed";
       }
-      uploaded++;
     }
 
     const params = new URLSearchParams();
     if (returnSearch) params.set("q", returnSearch);
     if (returnFolder) params.set("folder", returnFolder);
-    params.set("toast", `${uploaded}+file${uploaded !== 1 ? "s" : ""}+uploaded`);
+    if (uploadError) {
+      params.set("toast", `Upload+failed:+${encodeURIComponent(uploadError)}`);
+    } else {
+      params.set("toast", `${uploaded}+file${uploaded !== 1 ? "s" : ""}+uploaded`);
+    }
 
     return redirect(`/admin/media?${params.toString()}`);
   }
