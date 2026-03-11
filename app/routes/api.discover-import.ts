@@ -1,4 +1,5 @@
 import type { Route } from "../+types/root";
+import sql from "~/lib/db.server";
 import {
   getCategories,
   createListing,
@@ -38,11 +39,38 @@ export async function action({ request }: Route.ActionArgs) {
       if (match) categoryId = match.id;
     }
 
-    // Create slug from name
-    const nameSlug = (details.name || "listing")
+    // Create slug from name, auto-dedup if slug already exists
+    let nameSlug = (details.name || "listing")
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-|-$/g, "");
+
+    // If a listing with this slug already exists, append city or a number
+    const existingBySlug = await sql`SELECT id FROM listings WHERE slug = ${nameSlug} LIMIT 1`;
+    if (existingBySlug.length > 0) {
+      // Try appending the city name first (e.g., "escalante-river-trailhead-tropic")
+      if (details.city) {
+        const citySlug = details.city.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+        const withCity = `${nameSlug}-${citySlug}`;
+        const existsWithCity = await sql`SELECT id FROM listings WHERE slug = ${withCity} LIMIT 1`;
+        if (existsWithCity.length === 0) {
+          nameSlug = withCity;
+        } else {
+          // Fall back to numeric suffix
+          for (let i = 2; i <= 10; i++) {
+            const candidate = `${nameSlug}-${i}`;
+            const exists = await sql`SELECT id FROM listings WHERE slug = ${candidate} LIMIT 1`;
+            if (exists.length === 0) { nameSlug = candidate; break; }
+          }
+        }
+      } else {
+        for (let i = 2; i <= 10; i++) {
+          const candidate = `${nameSlug}-${i}`;
+          const exists = await sql`SELECT id FROM listings WHERE slug = ${candidate} LIMIT 1`;
+          if (exists.length === 0) { nameSlug = candidate; break; }
+        }
+      }
+    }
 
     // Create listing as draft
     const listing = await createListing({
