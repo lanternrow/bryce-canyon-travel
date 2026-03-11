@@ -8,7 +8,7 @@ import {
 const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID || "";
 const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID || "";
 const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY || "";
-const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME || "zion-travel-media";
+const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME || "bryce-canyon-travel";
 const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || "";
 
 const s3Client = new S3Client({
@@ -20,6 +20,9 @@ const s3Client = new S3Client({
     accessKeyId: R2_ACCESS_KEY_ID,
     secretAccessKey: R2_SECRET_ACCESS_KEY,
   },
+  // R2 doesn't support AWS SDK v3's default checksum behavior
+  requestChecksumCalculation: "WHEN_REQUIRED",
+  responseChecksumValidation: "WHEN_REQUIRED",
 });
 
 function generateKey(filename: string): string {
@@ -52,7 +55,6 @@ export async function uploadToR2(file: File): Promise<{
       Key: key,
       Body: buffer,
       ContentType: file.type,
-      ContentLength: file.size,
     })
   );
 
