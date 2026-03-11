@@ -136,9 +136,10 @@ export async function action({ request }: Route.ActionArgs) {
     if (returnSearch) params.set("q", returnSearch);
     if (returnFolder) params.set("folder", returnFolder);
     if (uploadError) {
-      params.set("toast", `Upload+failed:+${encodeURIComponent(uploadError)}`);
+      params.set("toast", `Upload failed: ${uploadError}`);
+      params.set("toast_type", "error");
     } else {
-      params.set("toast", `${uploaded}+file${uploaded !== 1 ? "s" : ""}+uploaded`);
+      params.set("toast", `${uploaded} file${uploaded !== 1 ? "s" : ""} uploaded`);
     }
 
     return redirect(`/admin/media?${params.toString()}`);

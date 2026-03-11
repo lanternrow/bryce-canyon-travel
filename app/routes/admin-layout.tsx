@@ -214,9 +214,15 @@ export default function AdminLayout() {
   useEffect(() => {
     const toastMsg = searchParams.get("toast");
     if (toastMsg) {
-      toast.success(toastMsg);
+      const toastType = searchParams.get("toast_type");
+      if (toastType === "error") {
+        toast.error(toastMsg);
+      } else {
+        toast.success(toastMsg);
+      }
       const newParams = new URLSearchParams(searchParams);
       newParams.delete("toast");
+      newParams.delete("toast_type");
       setSearchParams(newParams, { replace: true });
     }
   }, [searchParams, setSearchParams]);
