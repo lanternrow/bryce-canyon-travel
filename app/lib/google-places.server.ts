@@ -2023,6 +2023,18 @@ export const DISCOVERY_QUERIES = [
   { template: "golf course driving range indoor golf in {town} {state}", suggestedType: "golf", includedType: "golf_course" },
 ] as const;
 
+/** Haversine distance between two lat/lng points, returns meters */
+function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6_371_000; // Earth radius in meters
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 export async function discoverPlaces(
   textQuery: string,
   center: { lat: number; lng: number },
@@ -2145,7 +2157,22 @@ export async function discoverPlaces(
     }
   }
 
-  const places: DiscoveredPlace[] = rawPlaces.map((p: any) => ({
+  // Filter out results that are outside the search radius.
+  // Google's text search treats locationRestriction as a bias, not a strict boundary,
+  // so it can return results hundreds of miles away in sparse areas.
+  const maxDistanceMeters = radius * 1.5; // Allow 50% buffer beyond the specified radius
+  const filteredPlaces = rawPlaces.filter((p: any) => {
+    if (!p.lat || !p.lng) return false;
+    const dist = haversineDistance(center.lat, center.lng, p.lat, p.lng);
+    return dist <= maxDistanceMeters;
+  });
+
+  const filtered = rawPlaces.length - filteredPlaces.length;
+  if (filtered > 0) {
+    debug += ` | Filtered ${filtered} out-of-range results`;
+  }
+
+  const places: DiscoveredPlace[] = filteredPlaces.map((p: any) => ({
     placeId: p.placeId,
     name: p.name,
     address: p.address,
