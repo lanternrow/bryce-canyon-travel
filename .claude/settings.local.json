@@ -1,7 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash",
+      "Bash(*)",
       "Read",
       "Edit",
       "Write",
@@ -16,16 +16,7 @@
       "mcp__Control_Chrome__*",
       "mcp__mcp-registry__*",
       "mcp__3b637589-bd6b-4853-9b85-b4700f54f14c__*",
-      "Bash(git init)",
-      "Bash(git branch -M master)",
-      "Bash(npm install)",
-      "Bash(npx tsc --noEmit)",
-      "Bash(npx react-router build)",
-      "Bash(npx react-router typegen)",
-      "mcp__Claude_Preview__preview_start",
-      "Bash(git remote add origin https://github.com/lanternrow/bryce-canyon-travel.git)",
-      "Bash(git status -u)",
-      "Bash(git add .claude/launch.json .claude/settings.local.json .dockerignore .env.example .gitignore Dockerfile README.md app/ db/ docs/ keyword-doc-blog.txt keyword-doc-listings.txt package-lock.json package.json public/ react-router.config.ts scripts/ tsconfig.json vite.config.ts)"
+      "mcp__scheduled-tasks__*"
     ]
   }
 }
