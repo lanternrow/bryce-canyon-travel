@@ -10,6 +10,20 @@ import { lookupRedirect, handleRedirectHit } from "./lib/redirect-cache.server";
 
 export const streamTimeout = 5_000;
 
+export function handleError(
+  error: unknown,
+  { request }: { request: Request }
+) {
+  const url = new URL(request.url);
+  console.error(`[handleError] ${request.method} ${url.pathname}`);
+  if (error instanceof Error) {
+    console.error(`[handleError] ${error.message}`);
+    console.error(`[handleError] ${error.stack}`);
+  } else {
+    console.error(`[handleError]`, error);
+  }
+}
+
 export default async function handleRequest(
   request: Request,
   responseStatusCode: number,
