@@ -38,16 +38,29 @@ export async function loader({ request }: Route.LoaderArgs) {
         ? Number(folderParam)
         : null;
 
-  const [media, folderTree] = await Promise.all([
-    getMedia({ limit: 100, search, folderId }),
-    getMediaFolderTree(),
-  ]);
+  try {
+    const [media, folderTree] = await Promise.all([
+      getMedia({ limit: 100, search, folderId }),
+      getMediaFolderTree(),
+    ]);
 
-  const urls = (media as any[]).map((m: any) => m.url).filter(Boolean);
-  const usageCounts = await getMediaUsageCounts(urls);
+    const urls = (media as any[]).map((m: any) => m.url).filter(Boolean);
+    const usageCounts = await getMediaUsageCounts(urls);
 
-  const r2Ready = isR2Configured();
-  return { media, folderTree, r2Ready, search, usageCounts, currentFolder: folderParam };
+    const r2Ready = isR2Configured();
+    return { media, folderTree, r2Ready, search, usageCounts, currentFolder: folderParam };
+  } catch (e) {
+    // Re-throw Response objects (e.g. redirects) as-is
+    if (e instanceof Response) throw e;
+    // Surface actual error details to the ErrorBoundary via Response data
+    const msg = e instanceof Error ? e.message : String(e);
+    const stack = e instanceof Error ? e.stack : "";
+    console.error("[admin-media loader error]", msg, stack);
+    throw new Response(
+      JSON.stringify({ error: msg, stack }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
+  }
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -1670,8 +1683,22 @@ export function ErrorBoundary() {
 
   if (isRouteErrorResponse(error)) {
     title = `${error.status} – Media Library`;
-    message = typeof error.data === "string" ? error.data : JSON.stringify(error.data, null, 2);
-    details = `Status: ${error.status} ${error.statusText}`;
+    // Try to parse JSON error data from our custom Response
+    if (typeof error.data === "string") {
+      try {
+        const parsed = JSON.parse(error.data);
+        message = parsed.error || error.data;
+        details = parsed.stack || "";
+      } catch {
+        message = error.data;
+      }
+    } else if (error.data && typeof error.data === "object") {
+      message = (error.data as any).error || JSON.stringify(error.data, null, 2);
+      details = (error.data as any).stack || "";
+    }
+    if (!details) {
+      details = `Status: ${error.status} ${error.statusText}`;
+    }
   } else if (error instanceof Error) {
     message = error.message;
     details = error.stack || "";
@@ -1688,11 +1715,15 @@ export function ErrorBoundary() {
       </div>
       {details && (
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
-          <p className="text-gray-600 font-medium mb-2">Details:</p>
+          <p className="text-gray-600 font-medium mb-2">Stack Trace:</p>
           <pre className="text-xs text-gray-500 whitespace-pre-wrap break-words">{details}</pre>
         </div>
       )}
-      <a href="/admin/media" className="mt-4 inline-block text-primary underline">
+      <p className="mt-4 text-sm text-gray-400">
+        Raw error type: {typeof error === "object" && error !== null ? error.constructor?.name || "object" : typeof error}
+        {isRouteErrorResponse(error) && ` | status=${error.status} | data type=${typeof error.data}`}
+      </p>
+      <a href="/admin/media" className="mt-6 inline-block text-primary underline">
         Try again
       </a>
     </div>
