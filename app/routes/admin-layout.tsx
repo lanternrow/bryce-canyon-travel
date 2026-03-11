@@ -286,10 +286,10 @@ export default function AdminLayout() {
           ) : (
             <>
               <span className="text-xl font-black text-white tracking-tight leading-none">
-                ZION
+                {siteConfig.siteName.split(" ")[0]}
               </span>
               <span className="block text-[10px] font-light tracking-[0.3em] text-sand">
-                TRAVEL ADMIN
+                {siteConfig.siteName.split(" ").slice(1).join(" ")} ADMIN
               </span>
             </>
           )}
