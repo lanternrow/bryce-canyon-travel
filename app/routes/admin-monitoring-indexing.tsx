@@ -40,6 +40,10 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   const gscConfigured = hasGoogleCredentials();
   const siteUrl = settings.gsc_site_url || siteConfig.siteUrl;
+  // Bing needs a regular URL, not GSC's sc-domain: format
+  const bingSiteUrl = siteUrl.startsWith("sc-domain:")
+    ? `https://${siteUrl.replace("sc-domain:", "")}`
+    : siteUrl;
 
   let indexingData: SitemapsResult | null = null;
   if (gscConfigured) {
@@ -52,8 +56,8 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   if (bingConfigured) {
     [bingFeedsData, bingCrawlData] = await Promise.all([
-      listBingFeeds(siteUrl),
-      getBingCrawlStats(siteUrl),
+      listBingFeeds(bingSiteUrl),
+      getBingCrawlStats(bingSiteUrl),
     ]);
   }
 
@@ -89,10 +93,13 @@ export async function action({ request }: Route.ActionArgs) {
   if (intent === "refresh-bing") {
     clearBingCache();
     const settings = await getSettings();
-    const siteUrl = settings.gsc_site_url || siteConfig.siteUrl;
+    const gscUrl = settings.gsc_site_url || siteConfig.siteUrl;
+    const bingSiteUrl = gscUrl.startsWith("sc-domain:")
+      ? `https://${gscUrl.replace("sc-domain:", "")}`
+      : gscUrl;
     await Promise.all([
-      listBingFeeds(siteUrl, true),
-      getBingCrawlStats(siteUrl, true),
+      listBingFeeds(bingSiteUrl, true),
+      getBingCrawlStats(bingSiteUrl, true),
     ]);
     return { ok: true };
   }
@@ -112,7 +119,11 @@ export async function action({ request }: Route.ActionArgs) {
 
   if (intent === "submit-sitemaps-bing") {
     const settings = await getSettings();
-    const siteUrl = settings.gsc_site_url || siteConfig.siteUrl;
+    // Bing needs a regular URL, not GSC's sc-domain: format
+    const gscUrl = settings.gsc_site_url || siteConfig.siteUrl;
+    const siteUrl = gscUrl.startsWith("sc-domain:")
+      ? `https://${gscUrl.replace("sc-domain:", "")}`
+      : gscUrl;
     const result = await submitAllBingFeeds(siteUrl);
     const succeeded = result.results.filter((r) => r.success).length;
     const failed = result.results.filter((r) => !r.success).length;

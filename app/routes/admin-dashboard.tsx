@@ -68,10 +68,13 @@ export async function loader({ request }: Route.LoaderArgs) {
   let bingCrawlData: BingCrawlStatsResult | null = null;
 
   if (bingConfigured) {
-    const siteUrl = settings.gsc_site_url || siteConfig.siteUrl;
+    const gscUrl = settings.gsc_site_url || siteConfig.siteUrl;
+    const bingSiteUrl = gscUrl.startsWith("sc-domain:")
+      ? `https://${gscUrl.replace("sc-domain:", "")}`
+      : gscUrl;
     [bingFeedsData, bingCrawlData] = await Promise.all([
-      listBingFeeds(siteUrl),
-      getBingCrawlStats(siteUrl),
+      listBingFeeds(bingSiteUrl),
+      getBingCrawlStats(bingSiteUrl),
     ]);
   }
 
@@ -158,10 +161,13 @@ export async function action({ request }: Route.ActionArgs) {
   if (intent === "refresh-bing") {
     clearBingCache();
     const settings = await getSettings();
-    const siteUrl = settings.gsc_site_url || siteConfig.siteUrl;
+    const gscUrl = settings.gsc_site_url || siteConfig.siteUrl;
+    const bingSiteUrl = gscUrl.startsWith("sc-domain:")
+      ? `https://${gscUrl.replace("sc-domain:", "")}`
+      : gscUrl;
     await Promise.all([
-      listBingFeeds(siteUrl, true),
-      getBingCrawlStats(siteUrl, true),
+      listBingFeeds(bingSiteUrl, true),
+      getBingCrawlStats(bingSiteUrl, true),
     ]);
   }
 

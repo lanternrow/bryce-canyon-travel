@@ -62,13 +62,18 @@ export async function notifySearchEnginesDetailed(
   changedUrls: string[],
 ): Promise<SearchEngineNotifyResult> {
   const settings = await getSettings();
-  const siteUrl = (settings.gsc_site_url || siteConfig.siteUrl).replace(
+  const gscSiteUrl = (settings.gsc_site_url || siteConfig.siteUrl).replace(
     /\/$/,
     ""
   );
+  // GSC sc-domain: properties need the regular URL for building sitemap paths
+  // and for Bing API calls which don't understand the sc-domain: prefix
+  const httpSiteUrl = gscSiteUrl.startsWith("sc-domain:")
+    ? `https://${gscSiteUrl.replace("sc-domain:", "")}`
+    : gscSiteUrl;
 
   const result: SearchEngineNotifyResult = {
-    siteUrl,
+    siteUrl: gscSiteUrl,
     changedUrls,
     google: {
       enabled: hasGoogleCredentials(),
@@ -86,7 +91,7 @@ export async function notifySearchEnginesDetailed(
 
     if (hasListing) {
       result.google.listingsSitemap = await runTask(() =>
-        submitSitemap(siteUrl, `${siteUrl}/sitemap-listings.xml`).then(
+        submitSitemap(gscSiteUrl, `${httpSiteUrl}/sitemap-listings.xml`).then(
           (response) => {
             if (!response.success) {
               throw new Error(response.error || "Unknown Google sitemap error");
@@ -97,7 +102,7 @@ export async function notifySearchEnginesDetailed(
     }
     if (hasPost) {
       result.google.postsSitemap = await runTask(() =>
-        submitSitemap(siteUrl, `${siteUrl}/sitemap-posts.xml`).then(
+        submitSitemap(gscSiteUrl, `${httpSiteUrl}/sitemap-posts.xml`).then(
           (response) => {
             if (!response.success) {
               throw new Error(response.error || "Unknown Google sitemap error");
@@ -122,7 +127,7 @@ export async function notifySearchEnginesDetailed(
   // Bing URL batch submission (belt-and-suspenders with IndexNow)
   if (settings.bing_api_key) {
     result.bing = await runTask(() =>
-      submitBingUrlBatch(siteUrl, changedUrls).then((response) => {
+      submitBingUrlBatch(httpSiteUrl, changedUrls).then((response) => {
         if (!response.success) {
           throw new Error(response.error || "Unknown Bing batch error");
         }
