@@ -152,6 +152,23 @@ export async function action({ request }: Route.ActionArgs) {
     return redirect("/admin/monitoring/indexing?tab=configuration&toast=IndexNow+settings+saved");
   }
 
+  if (intent === "save-dataforseo") {
+    await updateSetting("dataforseo_login", (formData.get("dataforseo_login") as string) || "");
+    await updateSetting("dataforseo_password", (formData.get("dataforseo_password") as string) || "");
+    return redirect("/admin/monitoring/indexing?tab=configuration&toast=DataForSEO+settings+saved");
+  }
+
+  if (intent === "test-dataforseo") {
+    const login = (formData.get("dataforseo_login") as string) || "";
+    const password = (formData.get("dataforseo_password") as string) || "";
+    if (!login || !password) {
+      return { dataforseoTest: { ok: false, error: "Login and password are required" } };
+    }
+    const { testConnection } = await import("../lib/dataforseo.server");
+    const ok = await testConnection({ login, password });
+    return { dataforseoTest: { ok, error: ok ? null : "Connection failed — check your credentials" } };
+  }
+
   if (intent === "save-tracking") {
     for (const key of ["ga4_measurement_id", "ga4_property_id", "google_ads_id", "gsc_verification", "facebook_pixel_id"]) {
       await updateSetting(key, (formData.get(key) as string) || "");
@@ -1018,6 +1035,93 @@ function ConfigurationTab({
             <div className="pt-1">
               <button type="submit" className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors">Save</button>
             </div>
+          </Form>
+        </div>
+      </div>
+
+      {/* DataForSEO */}
+      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100">
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-semibold text-dark">DataForSEO</h2>
+            <span
+              className={`inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full font-medium ${
+                settings.dataforseo_login && settings.dataforseo_password
+                  ? "bg-emerald-100 text-emerald-700"
+                  : "bg-gray-100 text-gray-500"
+              }`}
+            >
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  settings.dataforseo_login && settings.dataforseo_password
+                    ? "bg-emerald-500"
+                    : "bg-gray-400"
+                }`}
+              />
+              {settings.dataforseo_login && settings.dataforseo_password
+                ? "Configured"
+                : "Not configured"}
+            </span>
+          </div>
+        </div>
+        <div className="p-6 space-y-4">
+          <Form method="post">
+            <input type="hidden" name="intent" value="save-dataforseo" />
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Login (Email)
+                </label>
+                <input
+                  type="text"
+                  name="dataforseo_login"
+                  defaultValue={settings.dataforseo_login || ""}
+                  placeholder="your-email@example.com"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  API Password
+                </label>
+                <input
+                  type="password"
+                  name="dataforseo_password"
+                  defaultValue={settings.dataforseo_password || ""}
+                  placeholder="Enter API password"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary text-sm"
+                />
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors"
+                >
+                  Save
+                </button>
+                <button
+                  type="submit"
+                  name="intent"
+                  value="test-dataforseo"
+                  className="px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Test Connection
+                </button>
+              </div>
+            </div>
+            <p className="text-xs text-gray-400 mt-2">
+              Powers Rank Tracker, Keyword Research, Backlink Monitor, and Site
+              Audit. Get your API credentials at{" "}
+              <a
+                href="https://app.dataforseo.com/api-access"
+                target="_blank"
+                rel="noopener"
+                className="text-primary hover:underline"
+              >
+                app.dataforseo.com
+              </a>
+              .
+            </p>
           </Form>
         </div>
       </div>

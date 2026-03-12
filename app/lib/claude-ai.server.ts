@@ -1450,3 +1450,108 @@ ${bodyHtml}`;
     return null;
   }
 }
+
+// ============================================
+// KEYWORD OPPORTUNITY ANALYSIS
+// ============================================
+
+export interface KeywordRecommendation {
+  keyword: string;
+  score: number; // 1–5
+  reason: string;
+}
+
+/**
+ * Analyze a list of keyword research results and recommend the best opportunities.
+ * Returns top 15-20 keywords with a 1-5 star score and one-line reason.
+ */
+export async function analyzeKeywordOpportunities(
+  keywords: Array<{
+    keyword: string;
+    search_volume: number;
+    competition?: number;
+    cpc?: number;
+    keyword_difficulty?: number;
+    intent?: string | null;
+  }>
+): Promise<KeywordRecommendation[]> {
+  const client = await getAnthropicClient();
+  if (!client) throw new Error("Claude AI is not configured");
+
+  const model = await getAiModel();
+  const keywordContext = await buildKeywordContext();
+
+  // Cap at 100 keywords
+  const capped = keywords.slice(0, 100);
+
+  const keywordList = capped
+    .map(
+      (k) =>
+        `- ${k.keyword} | vol:${k.search_volume} | comp:${k.competition ?? "?"} | cpc:$${k.cpc?.toFixed(2) ?? "?"} | diff:${k.keyword_difficulty ?? "?"} | intent:${k.intent ?? "?"}`
+    )
+    .join("\n");
+
+  const systemPrompt = `You are an SEO analyst for ${siteConfig.siteName} (${siteConfig.siteUrl}), a travel directory focused on ${siteConfig.parkName} and ${siteConfig.regionName}. Your job is to evaluate keyword opportunities.
+
+${keywordContext ? `${keywordContext}\n\n` : ""}Evaluate each keyword based on:
+1. Relevance to ${siteConfig.parkName} travel, lodging, dining, hiking, tours, and activities
+2. Search volume (higher is better)
+3. Competition/difficulty (lower is better — look for gaps)
+4. Search intent alignment (commercial and informational intents are best for a travel directory)
+5. Content gap potential — keywords NOT already covered in the SEO keyword reference above are more valuable
+
+Return ONLY the top 15–20 best opportunities. For each, output exactly one line in this format:
+KEYWORD | SCORE | REASON
+
+Where SCORE is 1–5 (5 = highest priority) and REASON is a brief one-line explanation.
+Do not include any other text, headers, or formatting.`;
+
+  const response = await client.messages.create({
+    model,
+    max_tokens: 1500,
+    temperature: 0.3,
+    system: systemPrompt,
+    messages: [
+      {
+        role: "user",
+        content: `Analyze these keywords and recommend the best opportunities:\n\n${keywordList}`,
+      },
+    ],
+  });
+
+  const textBlock = response.content.find((block) => block.type === "text");
+  if (!textBlock || textBlock.type !== "text") {
+    console.error("AI keyword analysis: no text block in response");
+    return [];
+  }
+
+  const rawText = textBlock.text.trim();
+  const lines = rawText.split("\n").filter(Boolean);
+  const recommendations: KeywordRecommendation[] = [];
+
+  for (const line of lines) {
+    // Strip leading numbering (1., 2., -), markdown bold (**), and whitespace
+    const cleaned = line
+      .replace(/^\s*\d+[\.\)]\s*/, "")     // "1. " or "1) "
+      .replace(/^\s*[-*•]\s*/, "")           // "- " or "* " or "• "
+      .replace(/\*\*/g, "")                  // **bold**
+      .replace(/`/g, "")                     // `code`
+      .trim();
+
+    const parts = cleaned.split("|").map((s) => s.trim());
+    if (parts.length >= 3) {
+      const keyword = parts[0].toLowerCase().trim();
+      const score = Math.min(5, Math.max(1, parseInt(parts[1], 10)));
+      const reason = parts.slice(2).join("|").trim();
+      if (keyword && !isNaN(score) && reason) {
+        recommendations.push({ keyword, score, reason });
+      }
+    }
+  }
+
+  if (recommendations.length === 0 && lines.length > 0) {
+    console.error("AI keyword analysis: parsed 0 recommendations from", lines.length, "response lines. First line:", lines[0]);
+  }
+
+  return recommendations;
+}
