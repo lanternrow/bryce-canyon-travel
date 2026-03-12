@@ -64,9 +64,10 @@ export async function loader({ request }: Route.LoaderArgs) {
   await requireAuth(request);
   const settings = await getSettings();
   const apiKey = (settings as Record<string, string>).google_places_api_key;
-  const siteUrl =
-    (settings as Record<string, string>).gsc_site_url ||
-    siteConfig.siteUrl;
+  const gscUrl = (settings as Record<string, string>).gsc_site_url || "";
+  const siteUrl = gscUrl.startsWith("sc-domain:")
+    ? `https://${gscUrl.replace("sc-domain:", "")}`
+    : gscUrl || siteConfig.siteUrl;
 
   if (!apiKey) {
     return { configured: false, mobile: null, desktop: null };

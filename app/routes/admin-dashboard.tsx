@@ -84,7 +84,10 @@ export async function loader({ request }: Route.LoaderArgs) {
   let speedMobile: any = null;
 
   try {
-    const monitoringSiteUrl = settings.gsc_site_url || siteConfig.siteUrl;
+    const rawMonitoringUrl = settings.gsc_site_url || "";
+    const monitoringSiteUrl = rawMonitoringUrl.startsWith("sc-domain:")
+      ? `https://${rawMonitoringUrl.replace("sc-domain:", "")}`
+      : rawMonitoringUrl || siteConfig.siteUrl;
 
     // Compute date range for GSC (needs YYYY-MM-DD, not relative dates)
     const end = new Date();
