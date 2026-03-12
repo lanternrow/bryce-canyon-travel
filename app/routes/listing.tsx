@@ -6,10 +6,11 @@ import PriceRange from "../components/PriceRange";
 import type {
   Listing,
   HikingDetails,
+  ParkDetails,
   BusinessHours,
   DayOfWeek,
 } from "../lib/types";
-import { getListingBySlug, getHikingDetails } from "../lib/queries.server";
+import { getListingBySlug, getHikingDetails, getParkDetails } from "../lib/queries.server";
 import { getGoogleReviewsForListing } from "../lib/google-places.server";
 import type { GoogleReview } from "../lib/google-places.server";
 import { buildMediaMetadata } from "../lib/media-helpers.server";
@@ -141,6 +142,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   }
 
   const hikingDetails = type === "hiking" ? await getHikingDetails(listing.id) : null;
+  const parkDetails = type === "parks" ? await getParkDetails(listing.id) : null;
 
   // Fetch Google Reviews if the listing has a Google Place ID
   let googleReviews: GoogleReview[] = [];
@@ -178,6 +180,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   return {
     listing,
     hikingDetails,
+    parkDetails,
     googleReviews,
     googleRating,
     googleReviewCount,
@@ -249,7 +252,7 @@ function GoogleStars({ rating }: { rating: number }) {
 // Component
 // ---------------------------------------------------------------------------
 export default function ListingPage({ loaderData }: Route.ComponentProps) {
-  const { listing, hikingDetails, googleReviews, googleRating, googleReviewCount, mediaMetadata, etaFromZion } = loaderData;
+  const { listing, hikingDetails, parkDetails, googleReviews, googleRating, googleReviewCount, mediaMetadata, etaFromZion } = loaderData;
   const [searchParams] = useSearchParams();
 
   const isPreview = searchParams.get("preview") === "true" && listing.status !== "published";
@@ -529,6 +532,184 @@ export default function ListingPage({ loaderData }: Route.ComponentProps) {
                 </div>
               )}
 
+              {/* Park Information */}
+              {parkDetails && (
+                <div className="mb-8 bg-cream/50 border border-sand/30 rounded-2xl p-6">
+                  <h2 className="text-lg font-semibold text-dark mb-4">
+                    Park Information
+                  </h2>
+
+                  {/* Big stat numbers */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
+                    {parkDetails.acreage && (
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-dark">
+                          {parkDetails.acreage.toLocaleString()}
+                        </div>
+                        <div className="text-xs text-gray-500 uppercase tracking-wide mt-1">
+                          Acres
+                        </div>
+                      </div>
+                    )}
+                    {parkDetails.elevation_ft && (
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-dark">
+                          {parkDetails.elevation_ft.toLocaleString()}
+                        </div>
+                        <div className="text-xs text-gray-500 uppercase tracking-wide mt-1">
+                          Ft Elevation
+                        </div>
+                      </div>
+                    )}
+                    {parkDetails.year_established && (
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-dark">
+                          {parkDetails.year_established}
+                        </div>
+                        <div className="text-xs text-gray-500 uppercase tracking-wide mt-1">
+                          Established
+                        </div>
+                      </div>
+                    )}
+                    {parkDetails.governing_agency && (
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-dark">
+                          {parkDetails.governing_agency}
+                        </div>
+                        <div className="text-xs text-gray-500 uppercase tracking-wide mt-1">
+                          Agency
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Entry & access badges */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-6 pt-6 border-t border-sand/30">
+                    {parkDetails.entry_fee && (
+                      <div className="flex items-center gap-2 text-sm text-gray-700">
+                        <span className="text-amber-600 font-medium">{parkDetails.entry_fee}</span>
+                      </div>
+                    )}
+                    {parkDetails.annual_pass_accepted && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="text-green-600">Annual Pass Accepted</span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2 text-sm text-gray-700">
+                      <span className={
+                        parkDetails.entry_requirement === "permit" ? "text-orange-600"
+                        : parkDetails.entry_requirement === "entry_fee" ? "text-amber-600"
+                        : "text-green-600"
+                      }>
+                        {parkDetails.entry_requirement === "permit" ? "Permit Required"
+                        : parkDetails.entry_requirement === "entry_fee" ? "Entry Fee"
+                        : "Free Entry"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-gray-700">
+                      <span className={
+                        parkDetails.dog_policy === "off_leash" ? "text-green-600"
+                        : parkDetails.dog_policy === "on_leash" ? "text-blue-600"
+                        : "text-gray-500"
+                      }>
+                        {parkDetails.dog_policy === "off_leash" ? "Dogs Allowed Off Leash"
+                        : parkDetails.dog_policy === "on_leash" ? "Dogs Allowed on Leash"
+                        : "No Dogs"}
+                      </span>
+                    </div>
+                    {parkDetails.season_start && parkDetails.season_end && (
+                      <div className="flex items-center gap-2 text-sm text-gray-700">
+                        <span>Season: {parkDetails.season_start} - {parkDetails.season_end}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Operating hours */}
+                  {(parkDetails.park_hours || parkDetails.visitor_center_hours) && (
+                    <div className="mt-6 pt-6 border-t border-sand/30 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {parkDetails.park_hours && (
+                        <div className="text-sm text-gray-700">
+                          <span className="font-medium">Park Hours:</span> {parkDetails.park_hours}
+                        </div>
+                      )}
+                      {parkDetails.visitor_center_hours && (
+                        <div className="text-sm text-gray-700">
+                          <span className="font-medium">Visitor Center:</span> {parkDetails.visitor_center_hours}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Facility tags */}
+                  {(parkDetails.has_visitor_center || parkDetails.has_campgrounds || parkDetails.has_scenic_drives || parkDetails.has_restrooms || parkDetails.has_wheelchair_access || parkDetails.has_cell_service || parkDetails.water_available || parkDetails.kid_friendly) && (
+                    <div className="mt-6 pt-6 border-t border-sand/30 flex flex-wrap gap-2">
+                      {parkDetails.has_visitor_center && <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">Visitor Center</span>}
+                      {parkDetails.has_campgrounds && <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">Campgrounds</span>}
+                      {parkDetails.has_scenic_drives && <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Scenic Drives</span>}
+                      {parkDetails.has_restrooms && <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">Restrooms</span>}
+                      {parkDetails.has_wheelchair_access && <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Wheelchair Access</span>}
+                      {parkDetails.has_cell_service && <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Cell Service</span>}
+                      {parkDetails.water_available && <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">Water Available</span>}
+                      {parkDetails.kid_friendly && <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">Kid Friendly</span>}
+                    </div>
+                  )}
+
+                  {/* Seasonal closure warning */}
+                  {parkDetails.seasonal_closure && (
+                    <p className="mt-4 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                      <strong>Seasonal Closure:</strong> {parkDetails.seasonal_closure}
+                    </p>
+                  )}
+
+                  {/* Special notices */}
+                  {parkDetails.notices && (
+                    <p className="mt-4 text-sm text-orange-700 bg-orange-50 border border-orange-200 rounded-lg p-3">
+                      <strong>Notice:</strong> {parkDetails.notices}
+                    </p>
+                  )}
+
+                  {/* Fee-free info */}
+                  {parkDetails.fee_free_info && (
+                    <p className="mt-4 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg p-3">
+                      <strong>Fee-Free Days:</strong> {parkDetails.fee_free_info}
+                    </p>
+                  )}
+
+                  {/* Data source attribution */}
+                  {parkDetails.data_sources && (
+                    <p className="mt-4 pt-3 border-t border-sand/20 text-xs text-gray-400 leading-relaxed">
+                      Park data courtesy of{" "}
+                      {parkDetails.data_sources.split(",").map((src: string, i: number, arr: string[]) => {
+                        const info: Record<string, { label: string; url: string }> = {
+                          NPS: { label: "National Park Service", url: "https://www.nps.gov" },
+                          BLM: { label: "Bureau of Land Management", url: "https://www.blm.gov" },
+                          USFS: { label: "US Forest Service", url: "https://www.fs.usda.gov" },
+                          Wikidata: { label: "Wikidata", url: "https://www.wikidata.org" },
+                          Wikipedia: { label: "Wikipedia", url: "https://en.wikipedia.org" },
+                          AI: { label: "AI-assisted research", url: "#" },
+                        };
+                        const source = info[src.trim()];
+                        if (!source) return null;
+                        return (
+                          <span key={src}>
+                            <a
+                              href={source.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-gray-400 hover:text-primary underline decoration-dotted underline-offset-2"
+                            >
+                              {source.label}
+                            </a>
+                            {i < arr.length - 2 ? ", " : i === arr.length - 2 ? " and " : ""}
+                          </span>
+                        );
+                      })}
+                      .
+                    </p>
+                  )}
+                </div>
+              )}
+
               {/* Description */}
               {listing.description && (
                 <div className="mb-8">
@@ -556,7 +737,7 @@ export default function ListingPage({ loaderData }: Route.ComponentProps) {
               {listing.amenities && listing.amenities.length > 0 && (
                 <div className="mb-8">
                   <h2 className="text-xl font-semibold text-dark mb-4">
-                    {listing.type === "hiking" ? "Trail Features" : "Amenities"}
+                    {listing.type === "hiking" ? "Trail Features" : listing.type === "parks" ? "Park Amenities" : "Amenities"}
                   </h2>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                     {listing.amenities.map((amenity) => (

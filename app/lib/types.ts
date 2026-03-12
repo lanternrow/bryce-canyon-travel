@@ -193,6 +193,41 @@ export interface HikingDetails {
   dogs_allowed?: boolean;
 }
 
+export interface ParkDetails {
+  listing_id: string;
+  // Entry Fees & Passes
+  entry_fee?: string;
+  annual_pass_accepted?: boolean;
+  fee_free_info?: string;
+  // Operating Info
+  park_hours?: string;
+  visitor_center_hours?: string;
+  seasonal_closure?: string;
+  // Park Stats
+  elevation_ft?: number;
+  acreage?: number;
+  year_established?: number;
+  governing_agency?: string;
+  // Visitor Facilities
+  has_visitor_center?: boolean;
+  has_campgrounds?: boolean;
+  has_scenic_drives?: boolean;
+  has_restrooms?: boolean;
+  has_wheelchair_access?: boolean;
+  has_cell_service?: boolean;
+  // Special Notices
+  notices?: string;
+  // Shared fields
+  entry_requirement?: EntryRequirement;
+  dog_policy?: DogPolicy;
+  season_start?: string;
+  season_end?: string;
+  water_available?: boolean;
+  kid_friendly?: boolean;
+  // Data provenance
+  data_sources?: string;
+}
+
 export interface TransportationDetails {
   listing_id: string;
   transport_type?: string;

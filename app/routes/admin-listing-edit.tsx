@@ -1,7 +1,7 @@
 import { Link, useLoaderData, useActionData, Form, redirect, useFetcher, useRouteLoaderData } from "react-router";
 import { useRef, useEffect, useState, useCallback, lazy, Suspense } from "react";
 import type { Route } from "./+types/admin-listing-edit";
-import type { Listing, ListingStatus, ListingType, PriceRange, DifficultyLevel, TrailType } from "../lib/types";
+import type { Listing, ListingStatus, ListingType, PriceRange, DifficultyLevel, TrailType, ParkDetails, EntryRequirement, DogPolicy } from "../lib/types";
 import {
   getListingById,
   getCategories,
@@ -16,6 +16,8 @@ import {
   countMediaInFolder,
   getHikingDetails,
   upsertHikingDetails,
+  getParkDetails,
+  upsertParkDetails,
 } from "../lib/queries.server";
 import { fetchPlaceDetailsForAutoPopulate, generateContentOnly } from "../lib/google-places.server";
 import { notifySearchEngines } from "../lib/seo-notify.server";
@@ -109,6 +111,9 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const hikingDetails = listing?.type === "hiking"
     ? await getHikingDetails(listing.id)
     : null;
+  const parkDetails = listing?.type === "parks"
+    ? await getParkDetails(listing.id)
+    : null;
 
   // Count submitted photos for this listing
   let submittedPhotoCount = 0;
@@ -130,6 +135,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     recentDeindexRequests,
     submittedPhotoCount,
     hikingDetails,
+    parkDetails,
   };
 }
 
@@ -455,6 +461,36 @@ export async function action({ request, params }: Route.ActionArgs) {
         });
       }
 
+      // Save park details for parks listings
+      if (type === "parks") {
+        await upsertParkDetails(newId, {
+          entry_fee: (formData.get("park_entry_fee") as string) || undefined,
+          annual_pass_accepted: formData.get("park_annual_pass_accepted") === "on",
+          fee_free_info: (formData.get("park_fee_free_info") as string) || undefined,
+          park_hours: (formData.get("park_park_hours") as string) || undefined,
+          visitor_center_hours: (formData.get("park_visitor_center_hours") as string) || undefined,
+          seasonal_closure: (formData.get("park_seasonal_closure") as string) || undefined,
+          elevation_ft: formData.get("park_elevation_ft") ? parseInt(formData.get("park_elevation_ft") as string, 10) : undefined,
+          acreage: formData.get("park_acreage") ? parseInt(formData.get("park_acreage") as string, 10) : undefined,
+          year_established: formData.get("park_year_established") ? parseInt(formData.get("park_year_established") as string, 10) : undefined,
+          governing_agency: (formData.get("park_governing_agency") as string) || undefined,
+          has_visitor_center: formData.get("park_has_visitor_center") === "on",
+          has_campgrounds: formData.get("park_has_campgrounds") === "on",
+          has_scenic_drives: formData.get("park_has_scenic_drives") === "on",
+          has_restrooms: formData.get("park_has_restrooms") === "on",
+          has_wheelchair_access: formData.get("park_has_wheelchair_access") === "on",
+          has_cell_service: formData.get("park_has_cell_service") === "on",
+          notices: (formData.get("park_notices") as string) || undefined,
+          entry_requirement: ((formData.get("park_entry_requirement") as string) || "none") as EntryRequirement,
+          dog_policy: ((formData.get("park_dog_policy") as string) || "not_allowed") as DogPolicy,
+          season_start: (formData.get("park_season_start") as string) || undefined,
+          season_end: (formData.get("park_season_end") as string) || undefined,
+          water_available: formData.get("park_water_available") === "on",
+          kid_friendly: formData.get("park_kid_friendly") === "on",
+          data_sources: (formData.get("park_data_sources") as string) || undefined,
+        });
+      }
+
       // Notify search engines when newly published (fire-and-forget)
       if (data.status === "published" && data.type) {
         const listingUrl = getListingUrl(data.type, slug);
@@ -511,6 +547,36 @@ export async function action({ request, params }: Route.ActionArgs) {
         });
       }
 
+      // Save park details for parks listings
+      if (type === "parks") {
+        await upsertParkDetails(params.id!, {
+          entry_fee: (formData.get("park_entry_fee") as string) || undefined,
+          annual_pass_accepted: formData.get("park_annual_pass_accepted") === "on",
+          fee_free_info: (formData.get("park_fee_free_info") as string) || undefined,
+          park_hours: (formData.get("park_park_hours") as string) || undefined,
+          visitor_center_hours: (formData.get("park_visitor_center_hours") as string) || undefined,
+          seasonal_closure: (formData.get("park_seasonal_closure") as string) || undefined,
+          elevation_ft: formData.get("park_elevation_ft") ? parseInt(formData.get("park_elevation_ft") as string, 10) : undefined,
+          acreage: formData.get("park_acreage") ? parseInt(formData.get("park_acreage") as string, 10) : undefined,
+          year_established: formData.get("park_year_established") ? parseInt(formData.get("park_year_established") as string, 10) : undefined,
+          governing_agency: (formData.get("park_governing_agency") as string) || undefined,
+          has_visitor_center: formData.get("park_has_visitor_center") === "on",
+          has_campgrounds: formData.get("park_has_campgrounds") === "on",
+          has_scenic_drives: formData.get("park_has_scenic_drives") === "on",
+          has_restrooms: formData.get("park_has_restrooms") === "on",
+          has_wheelchair_access: formData.get("park_has_wheelchair_access") === "on",
+          has_cell_service: formData.get("park_has_cell_service") === "on",
+          notices: (formData.get("park_notices") as string) || undefined,
+          entry_requirement: ((formData.get("park_entry_requirement") as string) || "none") as EntryRequirement,
+          dog_policy: ((formData.get("park_dog_policy") as string) || "not_allowed") as DogPolicy,
+          season_start: (formData.get("park_season_start") as string) || undefined,
+          season_end: (formData.get("park_season_end") as string) || undefined,
+          water_available: formData.get("park_water_available") === "on",
+          kid_friendly: formData.get("park_kid_friendly") === "on",
+          data_sources: (formData.get("park_data_sources") as string) || undefined,
+        });
+      }
+
       // Notify search engines on publish + unpublish transitions (fire-and-forget).
       // When previously published URLs move to draft/pending/archived, this helps
       // crawlers see the new 404 state and remove stale index entries faster.
@@ -552,6 +618,7 @@ export default function AdminListingEdit() {
     recentDeindexRequests,
     submittedPhotoCount,
     hikingDetails,
+    parkDetails,
   } = useLoaderData<typeof loader>();
   const rootData = useRouteLoaderData("root") as { settings: Record<string, string> } | undefined;
   const actionData = useActionData<typeof action>();
@@ -579,6 +646,8 @@ export default function AdminListingEdit() {
   const [linkCopied, setLinkCopied] = useState(false);
   const [hikingEntryReq, setHikingEntryReq] = useState<string>(hikingDetails?.entry_requirement || "none");
   const [hikingDataSources, setHikingDataSources] = useState(hikingDetails?.data_sources ?? "");
+  const [parkEntryReq, setParkEntryReq] = useState<string>(parkDetails?.entry_requirement || "none");
+  const [parkDataSources, setParkDataSources] = useState(parkDetails?.data_sources ?? "");
   const populateScopeRef = useRef<"trail" | "google">("google");
   // SEO section always visible (no twirl-down)
   const [nameValue, setNameValue] = useState(listing?.name || "");
@@ -823,7 +892,7 @@ export default function AdminListingEdit() {
       }
 
       // ── TRAIL INFO: trailhead coordinates ──
-      if (scope === "trail" && (typeValue === "hiking" || typeValue === "parks")) {
+      if (scope === "trail" && typeValue === "hiking") {
         if (d.lat && d.lng) {
           // Round to 7 decimal places (~1cm accuracy, avoids floating-point noise)
           const latRounded = String(Math.round(d.lat * 1e7) / 1e7);
@@ -1497,8 +1566,8 @@ export default function AdminListingEdit() {
           </div>
         </div>
 
-        {/* Trail Information — for hiking and parks listings */}
-        {(typeValue === "hiking" || typeValue === "parks") && (
+        {/* Trail Information — for hiking listings */}
+        {typeValue === "hiking" && (
           <div className="bg-white border border-gray-200 rounded-lg p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-dark">Trail Information</h2>
@@ -1768,6 +1837,293 @@ export default function AdminListingEdit() {
               </div>
             </div>
             <input type="hidden" name="hiking_data_sources" value={hikingDataSources} />
+          </div>
+        )}
+
+        {/* Park Information — for parks listings */}
+        {typeValue === "parks" && (
+          <div className="bg-white border border-gray-200 rounded-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-dark">Park Information</h2>
+            </div>
+
+            {/* Entry Fees & Passes */}
+            <div className="mb-6">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold">$</span>
+                Entry Fees &amp; Passes
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Entry Fee</label>
+                  <input
+                    type="text"
+                    name="park_entry_fee"
+                    defaultValue={parkDetails?.entry_fee ?? ""}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary"
+                    placeholder="e.g., $35/vehicle, $20/person, Free"
+                  />
+                </div>
+                <div className="flex items-end">
+                  <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer pb-2">
+                    <input
+                      type="checkbox"
+                      name="park_annual_pass_accepted"
+                      defaultChecked={parkDetails?.annual_pass_accepted ?? false}
+                      className="rounded border-gray-300 text-primary focus:ring-primary"
+                    />
+                    Annual Pass Accepted
+                  </label>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Fee-Free Info</label>
+                  <input
+                    type="text"
+                    name="park_fee_free_info"
+                    defaultValue={parkDetails?.fee_free_info ?? ""}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary"
+                    placeholder="e.g., Fee-free on MLK Day, National Park Week"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Operating Info */}
+            <div className="mb-6">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-100 text-blue-700 text-xs">&#128336;</span>
+                Operating Info
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Park Hours</label>
+                  <input
+                    type="text"
+                    name="park_park_hours"
+                    defaultValue={parkDetails?.park_hours ?? ""}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary"
+                    placeholder="e.g., 24 hours, Dawn to dusk"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Visitor Center Hours</label>
+                  <input
+                    type="text"
+                    name="park_visitor_center_hours"
+                    defaultValue={parkDetails?.visitor_center_hours ?? ""}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary"
+                    placeholder="e.g., 9am-5pm daily, closed winter"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Seasonal Closure</label>
+                <textarea
+                  name="park_seasonal_closure"
+                  rows={2}
+                  defaultValue={parkDetails?.seasonal_closure ?? ""}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary"
+                  placeholder="Details about seasonal closures, road closures, etc."
+                />
+              </div>
+            </div>
+
+            {/* Park Stats */}
+            <div className="mb-6">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-amber-100 text-amber-700 text-xs">&#128202;</span>
+                Park Stats
+              </h3>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Elevation (ft)</label>
+                  <input
+                    type="number"
+                    name="park_elevation_ft"
+                    defaultValue={parkDetails?.elevation_ft ?? ""}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary"
+                    placeholder="e.g., 5000"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Acreage</label>
+                  <input
+                    type="number"
+                    name="park_acreage"
+                    defaultValue={parkDetails?.acreage ?? ""}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary"
+                    placeholder="e.g., 148733"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Year Established</label>
+                  <input
+                    type="number"
+                    name="park_year_established"
+                    defaultValue={parkDetails?.year_established ?? ""}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary"
+                    placeholder="e.g., 1919"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Governing Agency</label>
+                  <select
+                    name="park_governing_agency"
+                    defaultValue={parkDetails?.governing_agency ?? ""}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary bg-white"
+                  >
+                    <option value="">—</option>
+                    <option value="NPS">NPS (National Park Service)</option>
+                    <option value="BLM">BLM (Bureau of Land Management)</option>
+                    <option value="USFS">USFS (Forest Service)</option>
+                    <option value="State">State Park</option>
+                    <option value="County">County Park</option>
+                    <option value="City">City Park</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Visitor Facilities */}
+            <div className="mb-6">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-violet-100 text-violet-700 text-xs">&#9978;</span>
+                Visitor Facilities
+              </h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                  <input type="checkbox" name="park_has_visitor_center" defaultChecked={parkDetails?.has_visitor_center ?? false} className="rounded border-gray-300 text-primary focus:ring-primary" />
+                  Visitor Center
+                </label>
+                <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                  <input type="checkbox" name="park_has_campgrounds" defaultChecked={parkDetails?.has_campgrounds ?? false} className="rounded border-gray-300 text-primary focus:ring-primary" />
+                  Campgrounds
+                </label>
+                <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                  <input type="checkbox" name="park_has_scenic_drives" defaultChecked={parkDetails?.has_scenic_drives ?? false} className="rounded border-gray-300 text-primary focus:ring-primary" />
+                  Scenic Drives
+                </label>
+                <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                  <input type="checkbox" name="park_has_restrooms" defaultChecked={parkDetails?.has_restrooms ?? false} className="rounded border-gray-300 text-primary focus:ring-primary" />
+                  Restrooms
+                </label>
+                <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                  <input type="checkbox" name="park_has_wheelchair_access" defaultChecked={parkDetails?.has_wheelchair_access ?? false} className="rounded border-gray-300 text-primary focus:ring-primary" />
+                  Wheelchair Access
+                </label>
+                <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                  <input type="checkbox" name="park_has_cell_service" defaultChecked={parkDetails?.has_cell_service ?? false} className="rounded border-gray-300 text-primary focus:ring-primary" />
+                  Cell Service
+                </label>
+              </div>
+            </div>
+
+            {/* Access & Season */}
+            <div className="mb-6">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-teal-100 text-teal-700 text-xs">&#128694;</span>
+                Access &amp; Season
+              </h3>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Entry Requirement</label>
+                  <select
+                    name="park_entry_requirement"
+                    defaultValue={parkDetails?.entry_requirement || "none"}
+                    onChange={(e) => setParkEntryReq(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary bg-white text-sm"
+                  >
+                    <option value="none">No Permit or Fee</option>
+                    <option value="entry_fee">Entry Fee Required</option>
+                    <option value="permit">Permit Required</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Dog Policy</label>
+                  <select
+                    name="park_dog_policy"
+                    defaultValue={parkDetails?.dog_policy || "not_allowed"}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary bg-white text-sm"
+                  >
+                    <option value="not_allowed">Dogs Not Allowed</option>
+                    <option value="on_leash">Dogs Allowed on Leash</option>
+                    <option value="off_leash">Dogs Allowed Off Leash</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Season Start</label>
+                  <select
+                    name="park_season_start"
+                    defaultValue={parkDetails?.season_start ?? ""}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary bg-white"
+                  >
+                    <option value="">—</option>
+                    <option value="January">January</option>
+                    <option value="February">February</option>
+                    <option value="March">March</option>
+                    <option value="April">April</option>
+                    <option value="May">May</option>
+                    <option value="June">June</option>
+                    <option value="July">July</option>
+                    <option value="August">August</option>
+                    <option value="September">September</option>
+                    <option value="October">October</option>
+                    <option value="November">November</option>
+                    <option value="December">December</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Season End</label>
+                  <select
+                    name="park_season_end"
+                    defaultValue={parkDetails?.season_end ?? ""}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary bg-white"
+                  >
+                    <option value="">—</option>
+                    <option value="January">January</option>
+                    <option value="February">February</option>
+                    <option value="March">March</option>
+                    <option value="April">April</option>
+                    <option value="May">May</option>
+                    <option value="June">June</option>
+                    <option value="July">July</option>
+                    <option value="August">August</option>
+                    <option value="September">September</option>
+                    <option value="October">October</option>
+                    <option value="November">November</option>
+                    <option value="December">December</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                  <input type="checkbox" name="park_water_available" defaultChecked={parkDetails?.water_available ?? false} className="rounded border-gray-300 text-primary focus:ring-primary" />
+                  Water Available
+                </label>
+                <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                  <input type="checkbox" name="park_kid_friendly" defaultChecked={parkDetails?.kid_friendly ?? false} className="rounded border-gray-300 text-primary focus:ring-primary" />
+                  Kid Friendly
+                </label>
+              </div>
+            </div>
+
+            {/* Special Notices */}
+            <div className="mb-4">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-orange-100 text-orange-700 text-xs">&#9888;</span>
+                Special Notices
+              </h3>
+              <textarea
+                name="park_notices"
+                rows={3}
+                defaultValue={parkDetails?.notices ?? ""}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary"
+                placeholder="Flash flood risks, traffic congestion, special regulations, accessibility notes, etc."
+              />
+            </div>
+
+            <input type="hidden" name="park_data_sources" value={parkDataSources} />
           </div>
         )}
 

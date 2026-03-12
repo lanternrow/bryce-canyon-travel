@@ -5,6 +5,7 @@ import type {
   Location,
   BusinessHours,
   HikingDetails,
+  ParkDetails,
   Amenity,
 } from "./types";
 import { getNewsArticlePath } from "./news-url";
@@ -291,6 +292,85 @@ export async function upsertHikingDetails(
       shade_level = EXCLUDED.shade_level,
       kid_friendly = EXCLUDED.kid_friendly,
       surface_type = EXCLUDED.surface_type,
+      data_sources = EXCLUDED.data_sources
+  `;
+}
+
+// ── Park Details ───────────────────────────────
+
+export async function getParkDetails(listingId: string) {
+  const results = await sql`
+    SELECT * FROM parks_details WHERE listing_id = ${listingId}
+  `;
+  return results.length > 0 ? (results[0] as unknown as ParkDetails) : null;
+}
+
+export async function upsertParkDetails(
+  listingId: string,
+  details: Omit<ParkDetails, "listing_id">
+) {
+  await sql`
+    INSERT INTO parks_details (
+      listing_id, entry_fee, annual_pass_accepted, fee_free_info,
+      park_hours, visitor_center_hours, seasonal_closure,
+      elevation_ft, acreage, year_established, governing_agency,
+      has_visitor_center, has_campgrounds, has_scenic_drives,
+      has_restrooms, has_wheelchair_access, has_cell_service,
+      notices,
+      entry_requirement, dog_policy, season_start, season_end,
+      water_available, kid_friendly,
+      data_sources
+    ) VALUES (
+      ${listingId},
+      ${details.entry_fee || null},
+      ${details.annual_pass_accepted ?? false},
+      ${details.fee_free_info || null},
+      ${details.park_hours || null},
+      ${details.visitor_center_hours || null},
+      ${details.seasonal_closure || null},
+      ${details.elevation_ft || null},
+      ${details.acreage || null},
+      ${details.year_established || null},
+      ${details.governing_agency || null},
+      ${details.has_visitor_center ?? false},
+      ${details.has_campgrounds ?? false},
+      ${details.has_scenic_drives ?? false},
+      ${details.has_restrooms ?? false},
+      ${details.has_wheelchair_access ?? false},
+      ${details.has_cell_service ?? false},
+      ${details.notices || null},
+      ${details.entry_requirement || "none"},
+      ${details.dog_policy || "not_allowed"},
+      ${details.season_start || null},
+      ${details.season_end || null},
+      ${details.water_available ?? false},
+      ${details.kid_friendly ?? false},
+      ${details.data_sources || null}
+    )
+    ON CONFLICT (listing_id) DO UPDATE SET
+      entry_fee = EXCLUDED.entry_fee,
+      annual_pass_accepted = EXCLUDED.annual_pass_accepted,
+      fee_free_info = EXCLUDED.fee_free_info,
+      park_hours = EXCLUDED.park_hours,
+      visitor_center_hours = EXCLUDED.visitor_center_hours,
+      seasonal_closure = EXCLUDED.seasonal_closure,
+      elevation_ft = EXCLUDED.elevation_ft,
+      acreage = EXCLUDED.acreage,
+      year_established = EXCLUDED.year_established,
+      governing_agency = EXCLUDED.governing_agency,
+      has_visitor_center = EXCLUDED.has_visitor_center,
+      has_campgrounds = EXCLUDED.has_campgrounds,
+      has_scenic_drives = EXCLUDED.has_scenic_drives,
+      has_restrooms = EXCLUDED.has_restrooms,
+      has_wheelchair_access = EXCLUDED.has_wheelchair_access,
+      has_cell_service = EXCLUDED.has_cell_service,
+      notices = EXCLUDED.notices,
+      entry_requirement = EXCLUDED.entry_requirement,
+      dog_policy = EXCLUDED.dog_policy,
+      season_start = EXCLUDED.season_start,
+      season_end = EXCLUDED.season_end,
+      water_available = EXCLUDED.water_available,
+      kid_friendly = EXCLUDED.kid_friendly,
       data_sources = EXCLUDED.data_sources
   `;
 }
