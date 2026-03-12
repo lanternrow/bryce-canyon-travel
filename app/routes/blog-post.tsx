@@ -3,6 +3,7 @@ import type { Route } from "./+types/blog-post";
 import { getBlogPostBySlug, getBlogPosts, getBlogCategoriesWithPostCounts, publishScheduledPosts } from "../lib/queries.server";
 import { formatShortDate } from "../lib/format";
 import { buildMediaMetadata } from "../lib/media-helpers.server";
+import { cfHero, cfCard } from "../lib/image-utils";
 import { buildBlogPostSchema } from "../lib/schema";
 import { formatPageTitle, getSiteName } from "../lib/title-template";
 import { getSession } from "../lib/auth.server";
@@ -163,9 +164,13 @@ export default function BlogPostPage({ loaderData }: Route.ComponentProps) {
       <div className="relative h-[300px] bg-gradient-to-br from-dark via-gray-800 to-dark flex items-end">
         {post.featured_image && (
           <img
-            src={post.featured_image}
+            src={cfHero(post.featured_image)}
             alt={mediaMetadata?.[post.featured_image]?.alt_text || post.title}
+            width={1600}
+            height={300}
             className="absolute inset-0 w-full h-full object-cover opacity-30"
+            loading="eager"
+            decoding="async"
           />
         )}
         <div className="relative max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 pb-12 w-full">
@@ -368,9 +373,13 @@ export default function BlogPostPage({ loaderData }: Route.ComponentProps) {
                   <article className="listing-card h-full">
                     {related.featured_image ? (
                       <img
-                        src={related.featured_image}
+                        src={cfCard(related.featured_image)}
                         alt={mediaMetadata?.[related.featured_image]?.alt_text || related.title}
+                        width={400}
+                        height={160}
                         className="h-40 w-full object-cover"
+                        loading="lazy"
+                        decoding="async"
                       />
                     ) : (
                       <div className="h-40 bg-gradient-to-br from-sage/30 to-sand/30" />

@@ -81,7 +81,7 @@ export async function getPageSpeedScore(
 
     const response = await fetch(
       `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?${params}`,
-      { signal: AbortSignal.timeout(15000) } // 15s timeout
+      { signal: AbortSignal.timeout(60000) } // 60s timeout — Lighthouse analysis can be slow
     );
 
     if (!response.ok) {

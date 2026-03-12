@@ -13,6 +13,7 @@ import { getListingBySlug, getHikingDetails } from "../lib/queries.server";
 import { getGoogleReviewsForListing } from "../lib/google-places.server";
 import type { GoogleReview } from "../lib/google-places.server";
 import { buildMediaMetadata } from "../lib/media-helpers.server";
+import { cfHero } from "../lib/image-utils";
 import { buildListingSchema } from "../lib/schema";
 import { formatPageTitle, getSiteName } from "../lib/title-template";
 import { siteConfig } from "../lib/site-config";
@@ -280,10 +281,14 @@ export default function ListingPage({ loaderData }: Route.ComponentProps) {
         <section className="relative h-[300px] overflow-hidden bg-gradient-to-br from-dark via-stone to-sand">
           {listing.featured_image ? (
             <img
-              src={listing.featured_image}
+              src={cfHero(listing.featured_image)}
               alt={mediaMetadata?.[listing.featured_image]?.alt_text || listing.name}
               title={mediaMetadata?.[listing.featured_image]?.title || undefined}
+              width={1600}
+              height={300}
               className="absolute inset-0 w-full h-full object-cover"
+              loading="eager"
+              decoding="async"
             />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center">

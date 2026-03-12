@@ -2,6 +2,7 @@ import { Link } from "react-router";
 import type { Listing } from "../lib/types";
 import StarRating from "./StarRating";
 import PriceRange from "./PriceRange";
+import { cfCard } from "../lib/image-utils";
 
 interface ListingCardProps {
   listing: Listing;
@@ -35,10 +36,13 @@ export default function ListingCard({
       <Link to={`/listing/${type}/${slug}`} className="block relative overflow-hidden">
         {featured_image ? (
           <img
-            src={featured_image}
+            src={cfCard(featured_image)}
             alt={mediaAlt || name}
+            width={400}
+            height={192}
             className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-105"
             loading="lazy"
+            decoding="async"
           />
         ) : (
           <div className="w-full h-48 bg-gradient-to-br from-sand/40 via-cream to-stone/30 flex items-center justify-center">

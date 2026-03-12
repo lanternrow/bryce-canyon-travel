@@ -7,6 +7,7 @@ import { getSystemPage } from "../lib/pages.server";
 import { formatPageTitle, getSiteName } from "../lib/title-template";
 import { getNewsArticlePath, getNewsCategoryPath } from "../lib/news-url";
 import { siteConfig } from "../lib/site-config";
+import { cfHero, cfCard } from "../lib/image-utils";
 
 export function meta({ data, matches }: Route.MetaArgs) {
   const seo = (data as any)?.seo || {};
@@ -198,9 +199,13 @@ export default function NewsPage({ loaderData }: Route.ComponentProps) {
       >
         {hero.bg_image && (
           <img
-            src={hero.bg_image}
+            src={cfHero(hero.bg_image)}
             alt=""
+            width={1600}
+            height={520}
             className="absolute inset-0 w-full h-full object-cover"
+            loading="eager"
+            decoding="async"
             style={{
               objectPosition: getObjectPosition(
                 hero.bg_image_focal_x,
@@ -273,9 +278,13 @@ export default function NewsPage({ loaderData }: Route.ComponentProps) {
                 <div className="relative h-48 overflow-hidden">
                   {post.featured_image ? (
                     <img
-                      src={post.featured_image}
+                      src={cfCard(post.featured_image)}
                       alt={mediaMetadata?.[post.featured_image!]?.alt_text || post.title}
+                      width={400}
+                      height={192}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      loading="lazy"
+                      decoding="async"
                     />
                   ) : (
                     <div className="h-full bg-gradient-to-br from-sage/30 to-sand/30" />

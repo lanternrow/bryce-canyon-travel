@@ -6,6 +6,7 @@ import { buildMediaMetadata } from "../lib/media-helpers.server";
 import { formatPageTitle, getSiteName } from "../lib/title-template";
 import { getNewsArticlePath, getNewsCategoryUrl } from "../lib/news-url";
 import { siteConfig } from "../lib/site-config";
+import { cfCard } from "../lib/image-utils";
 
 type BlogCategoryData = {
   id: number;
@@ -136,9 +137,13 @@ export default function BlogCategoryPage({ loaderData }: Route.ComponentProps) {
                   <div className="relative w-full sm:w-48 h-36 sm:h-auto rounded-lg flex-shrink-0 overflow-hidden">
                     {post.featured_image ? (
                       <img
-                        src={post.featured_image}
+                        src={cfCard(post.featured_image)}
                         alt={mediaMetadata?.[post.featured_image]?.alt_text || post.title}
+                        width={400}
+                        height={192}
                         className="w-full h-full object-cover"
+                        loading="lazy"
+                        decoding="async"
                       />
                     ) : (
                       <div className="w-full h-full bg-gradient-to-br from-sage/30 to-sand/30" />

@@ -1,3 +1,5 @@
+import { cfHero } from "../lib/image-utils";
+
 interface HeroBannerProps {
   title: string;
   subtitle: string;
@@ -75,7 +77,7 @@ export default function HeroBanner({
       {/* Background image or gradient placeholder */}
       {imageUrl ? (
         <img
-          src={imageUrl}
+          src={cfHero(imageUrl)}
           alt=""
           className="absolute inset-0 w-full h-full object-cover"
           style={{

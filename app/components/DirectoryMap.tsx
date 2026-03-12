@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Listing } from "../lib/types";
 import { siteConfig } from "../lib/site-config";
+import { cfThumb } from "../lib/image-utils";
 
 interface DirectoryMapProps {
   listings: Listing[];
@@ -86,7 +87,7 @@ export default function DirectoryMap({
             : listing.name;
 
         const imageHtml = listing.featured_image
-          ? `<img src="${listing.featured_image}" alt="${alt}" style="width:100%;height:100px;object-fit:cover;border-radius:6px 6px 0 0;" loading="lazy"/>`
+          ? `<img src="${cfThumb(listing.featured_image)}" alt="${alt}" style="width:100%;height:100px;object-fit:cover;border-radius:6px 6px 0 0;" loading="lazy"/>`
           : `<div style="width:100%;height:60px;background:linear-gradient(135deg,#f5f0e8,#e8e0d0);border-radius:6px 6px 0 0;display:flex;align-items:center;justify-content:center;">
                <svg width="24" height="24" fill="none" stroke="#b5a99a" viewBox="0 0 24 24" stroke-width="1.5">
                  <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z"/>

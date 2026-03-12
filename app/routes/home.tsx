@@ -10,6 +10,7 @@ import { buildMediaMetadata } from "../lib/media-helpers.server";
 import { formatPageTitle, getSiteName } from "../lib/title-template";
 import { getNewsArticlePath } from "../lib/news-url";
 import { siteConfig } from "../lib/site-config";
+import { cfHero, cfCard } from "../lib/image-utils";
 
 // ---------------------------------------------------------------------------
 // Defaults (used when DB has no overrides)
@@ -184,6 +185,12 @@ export function meta({ data, matches }: Route.MetaArgs) {
     tags.push({ name: "twitter:image", content: ogImage });
   }
 
+  // Preload hero image for faster LCP
+  const heroImage = (data as any)?.content?.hero?.bg_image;
+  if (heroImage) {
+    tags.push({ tagName: "link", rel: "preload", as: "image", href: cfHero(heroImage) });
+  }
+
   return tags;
 }
 
@@ -193,8 +200,8 @@ export function meta({ data, matches }: Route.MetaArgs) {
 export async function loader({}: Route.LoaderArgs) {
   const [result, popularResult, popularPostsResult, recentPostsResult, page] = await Promise.all([
     getListings({ sort: "default", perPage: 6 }),
-    getListings({ popular: "popular", perPage: 100, sort: "popular_desc" }),
-    getBlogPosts({ status: "published", popular: "popular", sort: "popular_desc", limit: 100 }),
+    getListings({ popular: "popular", perPage: 20, sort: "popular_desc" }),
+    getBlogPosts({ status: "published", popular: "popular", sort: "popular_desc", limit: 12 }),
     getBlogPosts({ status: "published", sort: "newest", limit: 3 }),
     getSystemPage("home"),
   ]);
@@ -406,8 +413,10 @@ export default function HomePage({ loaderData }: Route.ComponentProps) {
           {/* Background image (if set) */}
           {hero.bg_image && (
             <img
-              src={hero.bg_image}
+              src={cfHero(hero.bg_image)}
               alt=""
+              width={1920}
+              height={1080}
               className="absolute inset-0 w-full h-full object-cover"
               style={{
                 objectPosition: getObjectPosition(
@@ -415,6 +424,9 @@ export default function HomePage({ loaderData }: Route.ComponentProps) {
                   (hero as any).bg_image_focal_y
                 ),
               }}
+              loading="eager"
+              fetchPriority="high"
+              decoding="async"
               aria-hidden="true"
             />
           )}
@@ -580,9 +592,13 @@ export default function HomePage({ loaderData }: Route.ComponentProps) {
                       <div className="relative h-48 overflow-hidden">
                         {post.featured_image ? (
                           <img
-                            src={post.featured_image}
+                            src={cfCard(post.featured_image)}
                             alt={mediaMetadata?.[post.featured_image]?.alt_text || post.title}
+                            width={400}
+                            height={192}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            loading="lazy"
+                            decoding="async"
                           />
                         ) : (
                           <div className="h-full bg-gradient-to-br from-sage/30 to-sand/30" />
@@ -731,9 +747,13 @@ export default function HomePage({ loaderData }: Route.ComponentProps) {
                       <div className="relative h-48 overflow-hidden">
                         {post.featured_image ? (
                           <img
-                            src={post.featured_image}
+                            src={cfCard(post.featured_image)}
                             alt={mediaMetadata?.[post.featured_image]?.alt_text || post.title}
+                            width={400}
+                            height={192}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            loading="lazy"
+                            decoding="async"
                           />
                         ) : (
                           <div className="h-full bg-gradient-to-br from-sage/30 to-sand/30" />
