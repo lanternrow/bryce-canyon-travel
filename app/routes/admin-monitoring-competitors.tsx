@@ -237,6 +237,13 @@ export default function AdminMonitoringCompetitors() {
         </div>
       )}
 
+      {/* No competitors found */}
+      {discovered && discovered.length === 0 && !discoverFetcher.data?.error && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 text-sm text-amber-700">
+          No competing domains found yet. This usually means your site is too new and doesn't have enough organic keywords indexed by Google for DataForSEO to identify competitors. Try again once the site has more organic search presence.
+        </div>
+      )}
+
       {/* Discovered Competitors Table */}
       {discovered && discovered.length > 0 && (
         <div className="bg-white border border-gray-200 rounded-lg overflow-hidden mb-8">
