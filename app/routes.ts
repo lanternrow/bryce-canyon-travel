@@ -110,6 +110,7 @@ export default [
   route("api/link-search", "routes/api.link-search.ts"),
   route("api/newsletter-subscribe", "routes/api.newsletter-subscribe.ts"),
   route("api/submit-images", "routes/api.submit-images.ts"),
+  route("api/debug-listing", "routes/api.debug-listing.ts"),
 
   // Sitemap & SEO
   route("sitemap.xml", "routes/sitemap[.]xml.ts"),
