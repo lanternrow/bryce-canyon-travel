@@ -11,6 +11,7 @@ import {
   createMediaFolder,
   renameMediaFolder,
   deleteMediaFolder,
+  moveMediaFolder,
   moveMediaToFolder,
   getMediaUsageCounts,
   getMediaUsage,
@@ -181,6 +182,18 @@ export async function action({ request }: Route.ActionArgs) {
       return { ok: true, folderDeleted: true };
     }
 
+    // ── Move folder into another folder (drag-and-drop reparent) ──
+
+    if (intent === "move-folder") {
+      const folderId = Number(formData.get("folder_id"));
+      const targetParentId = formData.get("target_parent_id");
+      const newParentId = targetParentId ? Number(targetParentId) : null;
+      if (folderId) {
+        await moveMediaFolder(folderId, newParentId);
+      }
+      return { ok: true, folderMoved: true };
+    }
+
     // ── Move media to folder (drag-and-drop) ──
 
     if (intent === "move-to-folder") {
@@ -279,10 +292,12 @@ function FolderTreeNodeItem({
   onDelete,
   onCreateSub,
   dragOverId,
+  draggingFolderId,
   onDragOver,
   onDragEnter,
   onDragLeave,
   onDrop,
+  onFolderDragStart,
   depth,
 }: {
   node: MediaFolderTreeNode;
@@ -294,16 +309,19 @@ function FolderTreeNodeItem({
   onDelete: (id: number, name: string) => void;
   onCreateSub: (parentId: number) => void;
   dragOverId: number | "unfiled" | null;
+  draggingFolderId: number | null;
   onDragOver: (e: React.DragEvent) => void;
   onDragEnter: (e: React.DragEvent, id: number) => void;
   onDragLeave: (e: React.DragEvent, id: number) => void;
   onDrop: (e: React.DragEvent, id: number) => void;
+  onFolderDragStart: (e: React.DragEvent, id: number) => void;
   depth: number;
 }) {
   const isActive = currentFolder === String(node.id);
   const isExpanded = expandedIds.has(node.id);
   const hasChildren = node.children.length > 0;
   const isDragTarget = dragOverId === node.id;
+  const isBeingDragged = draggingFolderId === node.id;
 
   const folderLink = () => {
     const params = new URLSearchParams();
@@ -316,12 +334,16 @@ function FolderTreeNodeItem({
   return (
     <div>
       <div
+        draggable
+        onDragStart={(e) => onFolderDragStart(e, node.id)}
         className={`group flex items-center gap-1 py-1 pr-2 rounded-md text-sm transition-colors ${
-          isActive
-            ? "bg-primary/10 text-primary font-medium"
-            : isDragTarget
-              ? "ring-2 ring-primary bg-primary/5"
-              : "text-gray-700 hover:bg-gray-100"
+          isBeingDragged
+            ? "opacity-40"
+            : isActive
+              ? "bg-primary/10 text-primary font-medium"
+              : isDragTarget
+                ? "ring-2 ring-primary bg-primary/5"
+                : "text-gray-700 hover:bg-gray-100"
         }`}
         style={{ paddingLeft: `${depth * 16 + 4}px` }}
         onDragOver={onDragOver}
@@ -428,10 +450,12 @@ function FolderTreeNodeItem({
               onDelete={onDelete}
               onCreateSub={onCreateSub}
               dragOverId={dragOverId}
+              draggingFolderId={draggingFolderId}
               onDragOver={onDragOver}
               onDragEnter={onDragEnter}
               onDragLeave={onDragLeave}
               onDrop={onDrop}
+              onFolderDragStart={onFolderDragStart}
               depth={depth + 1}
             />
           ))}
@@ -452,10 +476,14 @@ function FolderTreeSidebar({
   currentFolder,
   search,
   dragOverId,
+  draggingFolderId,
   onDragOver,
   onDragEnterFolder,
   onDragLeaveFolder,
   onDropFolder,
+  onFolderDragStart,
+  onFolderDragEnd,
+  onDropFolderToRoot,
 }: {
   tree: MediaFolderTreeNode[];
   totalCount: number;
@@ -463,10 +491,14 @@ function FolderTreeSidebar({
   currentFolder: string | null;
   search: string;
   dragOverId: number | "unfiled" | null;
+  draggingFolderId: number | null;
   onDragOver: (e: React.DragEvent) => void;
   onDragEnterFolder: (e: React.DragEvent, id: number | "unfiled") => void;
   onDragLeaveFolder: (e: React.DragEvent, id: number | "unfiled") => void;
   onDropFolder: (e: React.DragEvent, id: number | null) => void;
+  onFolderDragStart: (e: React.DragEvent, id: number) => void;
+  onFolderDragEnd: () => void;
+  onDropFolderToRoot: (e: React.DragEvent) => void;
 }) {
   const [expandedIds, setExpandedIds] = useState<Set<number>>(() => {
     // Auto-expand folders that contain the current selection
@@ -564,7 +596,7 @@ function FolderTreeSidebar({
   };
 
   return (
-    <aside className="w-[260px] flex-shrink-0 bg-white border-r border-gray-200 flex flex-col">
+    <aside className="w-[260px] flex-shrink-0 bg-white border-r border-gray-200 flex flex-col" onDragEnd={onFolderDragEnd}>
       <div className="px-4 py-3 border-b border-gray-100">
         <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Folders</h2>
       </div>
@@ -656,13 +688,26 @@ function FolderTreeSidebar({
             onDelete={handleDelete}
             onCreateSub={handleCreateSub}
             dragOverId={dragOverId}
+            draggingFolderId={draggingFolderId}
             onDragOver={onDragOver}
             onDragEnter={(e, id) => onDragEnterFolder(e, id)}
             onDragLeave={(e, id) => onDragLeaveFolder(e, id)}
             onDrop={(e, id) => onDropFolder(e, id)}
+            onFolderDragStart={onFolderDragStart}
             depth={0}
           />
         ))}
+
+        {/* Drop zone to move folder to root level (visible while dragging a folder) */}
+        {draggingFolderId !== null && (
+          <div
+            className="mx-2 mt-2 px-3 py-2 border-2 border-dashed border-gray-300 rounded-md text-xs text-gray-400 text-center transition-colors hover:border-primary hover:text-primary hover:bg-primary/5"
+            onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }}
+            onDrop={onDropFolderToRoot}
+          >
+            Drop here to move to root
+          </div>
+        )}
 
         {/* New subfolder inline form (when creating under a parent) */}
         {newFolderParentId !== null && newFolderParentId !== "root" && (
@@ -1173,7 +1218,9 @@ export default function AdminMedia() {
 
   // ── Drag-and-drop state ──
   const [dragOverId, setDragOverId] = useState<number | "unfiled" | null>(null);
+  const [draggingFolderId, setDraggingFolderId] = useState<number | null>(null);
   const dragCounterRef = useRef<Map<number | "unfiled", number>>(new Map());
+  const folderMoveFetcher = useFetcher();
 
   const editingItem = editingId ? items.find((i) => i.id === editingId) : null;
   const gridLayout = MEDIA_GRID_LAYOUT[gridColumns];
@@ -1289,7 +1336,10 @@ export default function AdminMedia() {
 
   // ── Drag handlers for folder tree drop targets ──
   const handleFolderDragOver = useCallback((e: React.DragEvent) => {
-    if (e.dataTransfer.types.includes("application/x-media-ids")) {
+    if (
+      e.dataTransfer.types.includes("application/x-media-ids") ||
+      e.dataTransfer.types.includes("application/x-folder-id")
+    ) {
       e.preventDefault();
       e.dataTransfer.dropEffect = "move";
     }
@@ -1318,6 +1368,27 @@ export default function AdminMedia() {
     dragCounterRef.current.clear();
     setDragOverId(null);
 
+    // Check if a folder is being dropped into another folder
+    const folderRaw = e.dataTransfer.getData("application/x-folder-id");
+    if (folderRaw) {
+      const sourceFolderId = Number(folderRaw);
+      // Don't drop a folder onto itself
+      if (sourceFolderId === targetFolderId) {
+        setDraggingFolderId(null);
+        return;
+      }
+      folderMoveFetcher.submit(
+        {
+          intent: "move-folder",
+          folder_id: String(sourceFolderId),
+          target_parent_id: targetFolderId !== null ? String(targetFolderId) : "",
+        },
+        { method: "post" }
+      );
+      setDraggingFolderId(null);
+      return;
+    }
+
     const raw = e.dataTransfer.getData("application/x-media-ids");
     if (!raw) return;
 
@@ -1338,7 +1409,36 @@ export default function AdminMedia() {
     } catch {
       // ignore parse errors
     }
-  }, [moveFetcher]);
+  }, [moveFetcher, folderMoveFetcher]);
+
+  // ── Folder drag-start handler ──
+  const handleFolderDragStart = useCallback((e: React.DragEvent, folderId: number) => {
+    e.dataTransfer.setData("application/x-folder-id", String(folderId));
+    e.dataTransfer.effectAllowed = "move";
+    setDraggingFolderId(folderId);
+  }, []);
+
+  const handleFolderDragEnd = useCallback(() => {
+    setDraggingFolderId(null);
+    setDragOverId(null);
+    dragCounterRef.current.clear();
+  }, []);
+
+  // ── Drop folder to root (remove from parent) ──
+  const handleDropFolderToRoot = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    const folderRaw = e.dataTransfer.getData("application/x-folder-id");
+    if (!folderRaw) return;
+    folderMoveFetcher.submit(
+      {
+        intent: "move-folder",
+        folder_id: folderRaw,
+        target_parent_id: "",
+      },
+      { method: "post" }
+    );
+    setDraggingFolderId(null);
+  }, [folderMoveFetcher]);
 
   // Build folder link preserving search param
   const folderLink = (folderValue: string | null) => {
@@ -1371,10 +1471,14 @@ export default function AdminMedia() {
         currentFolder={currentFolder ?? null}
         search={search}
         dragOverId={dragOverId}
+        draggingFolderId={draggingFolderId}
         onDragOver={handleFolderDragOver}
         onDragEnterFolder={handleFolderDragEnter}
         onDragLeaveFolder={handleFolderDragLeave}
         onDropFolder={handleFolderDrop}
+        onFolderDragStart={handleFolderDragStart}
+        onFolderDragEnd={handleFolderDragEnd}
+        onDropFolderToRoot={handleDropFolderToRoot}
       />
 
       {/* Main content area */}

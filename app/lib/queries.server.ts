@@ -1842,6 +1842,24 @@ export async function renameMediaFolder(id: number, name: string, slug: string) 
   return result.length > 0 ? result[0] : null;
 }
 
+export async function moveMediaFolder(id: number, newParentId: number | null) {
+  // Prevent moving a folder into itself or its own descendants
+  if (newParentId !== null) {
+    let current: number | null = newParentId;
+    while (current !== null) {
+      if (current === id) return null; // Cycle detected — abort
+      const rows: Array<{ parent_id: number | null }> = await sql`SELECT parent_id FROM media_folders WHERE id = ${current}`;
+      current = rows.length > 0 ? rows[0].parent_id ?? null : null;
+    }
+  }
+  const result = await sql`
+    UPDATE media_folders SET parent_id = ${newParentId}
+    WHERE id = ${id}
+    RETURNING *
+  `;
+  return result.length > 0 ? result[0] : null;
+}
+
 export async function deleteMediaFolder(id: number) {
   // Reparent child folders to the deleted folder's parent
   const [folder] = await sql`SELECT parent_id FROM media_folders WHERE id = ${id}`;
