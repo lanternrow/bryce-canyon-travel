@@ -1,8 +1,26 @@
 import { requireAuth } from "../lib/auth.server";
-import { getSettings, createMedia } from "../lib/queries.server";
+import { getSettings, createMedia, findMediaFolderBySlug, createMediaFolder } from "../lib/queries.server";
 import { uploadToR2 } from "../lib/storage.server";
 import { generateImageMeta } from "../lib/claude-ai.server";
 import sql from "../lib/db.server";
+
+const STOCK_FOLDER_NAME = "Stock Images";
+const STOCK_FOLDER_SLUG = "stock-images";
+
+/**
+ * Get or create the "Stock Images" folder.
+ * First import creates it; all subsequent imports reuse it.
+ */
+async function getOrCreateStockFolder(): Promise<number> {
+  const existing = await findMediaFolderBySlug(STOCK_FOLDER_SLUG);
+  if (existing) return existing.id;
+
+  const created = await createMediaFolder({
+    name: STOCK_FOLDER_NAME,
+    slug: STOCK_FOLDER_SLUG,
+  });
+  return (created as any).id;
+}
 
 /**
  * GET /api/admin/media/pexels — Search Pexels photos
@@ -163,8 +181,8 @@ export async function action({ request }: { request: Request }) {
   const file = new File([blob], uploadFilename, { type: contentType });
   const uploaded = await uploadToR2(file);
 
-  // Insert into media table
-  const resolvedFolderId = folderId && Number.isFinite(Number(folderId)) ? Number(folderId) : null;
+  // Auto-sort into "Stock Images" folder (creates folder on first import)
+  const resolvedFolderId = await getOrCreateStockFolder();
 
   const rows = await sql`
     INSERT INTO media (
