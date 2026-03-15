@@ -84,12 +84,16 @@ export async function submitSitemap(
 export async function submitAllSitemaps(
   siteUrl: string
 ): Promise<{ results: Array<{ url: string; success: boolean; error?: string }> }> {
-  const baseUrl = siteUrl.replace(/\/$/, "");
+  // siteUrl may be "sc-domain:brycecanyon.travel" (domain property) — derive
+  // actual HTTPS URLs for the sitemap paths while keeping sc-domain: for the API
+  const httpBase = siteUrl.startsWith("sc-domain:")
+    ? `https://${siteUrl.replace("sc-domain:", "")}`
+    : siteUrl.replace(/\/$/, "");
   const sitemaps = [
-    `${baseUrl}/sitemap.xml`,
-    `${baseUrl}/sitemap-pages.xml`,
-    `${baseUrl}/sitemap-listings.xml`,
-    `${baseUrl}/sitemap-posts.xml`,
+    `${httpBase}/sitemap.xml`,
+    `${httpBase}/sitemap-pages.xml`,
+    `${httpBase}/sitemap-listings.xml`,
+    `${httpBase}/sitemap-posts.xml`,
   ];
 
   const results: Array<{ url: string; success: boolean; error?: string }> = [];
