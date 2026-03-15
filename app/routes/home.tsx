@@ -12,6 +12,18 @@ import { getNewsArticlePath } from "../lib/news-url";
 import { siteConfig } from "../lib/site-config";
 import { cfHero, cfCard } from "../lib/image-utils";
 import { buildHomepageSchema } from "../lib/schema";
+import { getWeatherData } from "../lib/weather-api.server";
+import {
+  getWeatherIcon,
+  getWeatherCodeLabel,
+  getUvLabel,
+  getWindDirectionLabel,
+  formatTime12h,
+  getDayOfWeek,
+  getTemperatureGradient,
+  type CurrentWeather,
+  type DailyForecast,
+} from "../lib/weather-data";
 
 // ---------------------------------------------------------------------------
 // Defaults (used when DB has no overrides)
@@ -202,12 +214,13 @@ export function meta({ data, matches }: Route.MetaArgs) {
 // Loader
 // ---------------------------------------------------------------------------
 export async function loader({}: Route.LoaderArgs) {
-  const [result, popularResult, popularPostsResult, recentPostsResult, page] = await Promise.all([
+  const [result, popularResult, popularPostsResult, recentPostsResult, page, weatherResult] = await Promise.all([
     getListings({ sort: "default", perPage: 6 }),
     getListings({ popular: "popular", perPage: 20, sort: "popular_desc" }),
     getBlogPosts({ status: "published", popular: "popular", sort: "popular_desc", limit: 12 }),
     getBlogPosts({ status: "published", sort: "newest", limit: 3 }),
     getSystemPage("home"),
+    getWeatherData().catch(() => null),
   ]);
 
   const content = mergeHomeContent(page?.content);
@@ -243,6 +256,19 @@ export async function loader({}: Route.LoaderArgs) {
       og_image: page?.og_image || DEFAULT_HOME_SEO.og_image,
     },
     mediaMetadata,
+    weather: weatherResult?.current
+      ? {
+          current: weatherResult.current,
+          daily: weatherResult.daily.slice(0, 5),
+          fetchedAt: weatherResult.fetchedAt,
+        }
+      : null,
+    localTime: new Date().toLocaleTimeString("en-US", {
+      timeZone: "America/Denver",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    }),
   };
 }
 
@@ -339,7 +365,7 @@ const cardIconBg: Record<string, string> = {
 // Component
 // ---------------------------------------------------------------------------
 export default function HomePage({ loaderData }: Route.ComponentProps) {
-  const { featured, popular, popularPosts, recentPosts, content, mediaMetadata } = loaderData;
+  const { featured, popular, popularPosts, recentPosts, content, mediaMetadata, weather, localTime } = loaderData;
   const c = content as typeof DEFAULT_HOME;
 
   // Newsletter subscription state
@@ -564,10 +590,35 @@ export default function HomePage({ loaderData }: Route.ComponentProps) {
         </section>
 
         {/* ---------------------------------------------------------------- */}
+        {/* WEATHER WIDGET                                                   */}
+        {/* ---------------------------------------------------------------- */}
+        {weather?.current && weather.daily.length > 0 && (
+          <section className="py-20 bg-white">
+            <div className="max-w-[1250px] mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="text-center mb-10">
+                <h2 className="text-3xl md:text-4xl font-bold text-dark tracking-tight">
+                  Current Weather
+                </h2>
+                <p className="mt-2 text-gray-600 text-lg">
+                  Real-time conditions at {siteConfig.parkName}
+                </p>
+              </div>
+
+              <WeatherWidget
+                current={weather.current}
+                daily={weather.daily as DailyForecast[]}
+                fetchedAt={weather.fetchedAt}
+                localTime={localTime}
+              />
+            </div>
+          </section>
+        )}
+
+        {/* ---------------------------------------------------------------- */}
         {/* POPULAR POSTS                                                    */}
         {/* ---------------------------------------------------------------- */}
         {popularPosts.length > 0 && (
-          <section className="py-20 bg-white">
+          <section className="py-20 bg-cream/30">
             <div className="max-w-[1250px] mx-auto px-4 sm:px-6 lg:px-8">
               <div className="flex items-end justify-between mb-12">
                 <div>
@@ -645,7 +696,7 @@ export default function HomePage({ loaderData }: Route.ComponentProps) {
         {/* ---------------------------------------------------------------- */}
         {/* PLAN YOUR VISIT                                                  */}
         {/* ---------------------------------------------------------------- */}
-        <section className="py-20 bg-cream/30">
+        <section className="py-20 bg-white">
           <div className="max-w-[1250px] mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-14">
               <h2 className="text-3xl md:text-4xl font-bold text-dark tracking-tight">
@@ -682,7 +733,7 @@ export default function HomePage({ loaderData }: Route.ComponentProps) {
         {/* POPULAR LISTINGS                                                 */}
         {/* ---------------------------------------------------------------- */}
         {popular.length > 0 && (
-          <section className="py-20 bg-white">
+          <section className="py-20 bg-cream/30">
             <div className="max-w-[1250px] mx-auto px-4 sm:px-6 lg:px-8">
               <div className="flex items-end justify-between mb-12">
                 <div>
@@ -722,7 +773,7 @@ export default function HomePage({ loaderData }: Route.ComponentProps) {
         {/* RECENT BLOG POSTS                                                */}
         {/* ---------------------------------------------------------------- */}
         {recentPosts.length > 0 && (
-          <section className="py-20 bg-cream/30">
+          <section className="py-20 bg-white">
             <div className="max-w-[1250px] mx-auto px-4 sm:px-6 lg:px-8">
               <div className="flex items-end justify-between mb-12">
                 <div>
@@ -840,5 +891,136 @@ export default function HomePage({ loaderData }: Route.ComponentProps) {
           </div>
         </section>
     </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Weather Widget (condensed homepage version)
+// ---------------------------------------------------------------------------
+function WeatherWidget({
+  current,
+  daily,
+  fetchedAt,
+  localTime,
+}: {
+  current: CurrentWeather;
+  daily: DailyForecast[];
+  fetchedAt: number;
+  localTime: string;
+}) {
+  const temp = Math.round(current.temperature);
+  const today = daily[0] || null;
+  const uv = getUvLabel(current.uvIndex);
+  const updatedAgo = Math.round((Date.now() - fetchedAt) / 60000);
+
+  return (
+    <div>
+      <div className={`rounded-2xl overflow-hidden shadow-xl bg-gradient-to-br ${getTemperatureGradient(temp)}`}>
+        {/* Current conditions */}
+        <div className="relative px-6 sm:px-10 pt-8 pb-8">
+          {/* Decorative circles */}
+          <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-white/5 -translate-y-1/3 translate-x-1/4" />
+          <div className="absolute bottom-0 left-0 w-48 h-48 rounded-full bg-white/5 translate-y-1/3 -translate-x-1/4" />
+
+          <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+            {/* Left: Temp + condition */}
+            <div className="flex items-center gap-5">
+              <span className="text-6xl sm:text-7xl drop-shadow-lg">{getWeatherIcon(current.weatherCode, current.isDay)}</span>
+              <div>
+                <div className="flex items-start">
+                  <span className="text-6xl sm:text-7xl font-extrabold text-white leading-none tracking-tight">
+                    {temp}°
+                  </span>
+                </div>
+                <div className="text-white/70 text-sm mt-1.5 font-medium">
+                  Feels like {Math.round(current.feelsLike)}°F
+                </div>
+                <div className="text-white text-lg font-semibold mt-0.5">
+                  {getWeatherCodeLabel(current.weatherCode)}
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Key stats */}
+            <div className="flex flex-col gap-3 sm:items-end">
+              <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
+                <div className="flex items-center gap-2 text-white/80">
+                  <span>💨</span>
+                  <span>{Math.round(current.windSpeed)} mph {getWindDirectionLabel(current.windDirection)}</span>
+                </div>
+                <div className="flex items-center gap-2 text-white/80">
+                  <span>💧</span>
+                  <span>Humidity {current.humidity}%</span>
+                </div>
+                <div className="flex items-center gap-2 text-white/80">
+                  <span>☀️</span>
+                  <span>UV {Math.round(current.uvIndex)} <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-full ${
+                    uv.color.includes("green") ? "bg-green-400/30 text-green-100" :
+                    uv.color.includes("yellow") ? "bg-yellow-400/30 text-yellow-100" :
+                    uv.color.includes("orange") ? "bg-orange-400/30 text-orange-100" :
+                    uv.color.includes("red") ? "bg-red-400/30 text-red-100" :
+                    "bg-purple-400/30 text-purple-100"
+                  }`}>{uv.label}</span></span>
+                </div>
+                {today && (
+                  <div className="flex items-center gap-2 text-white/80">
+                    <span>🌅</span>
+                    <span>{formatTime12h(today.sunrise)} · {formatTime12h(today.sunset)}</span>
+                  </div>
+                )}
+              </div>
+              {today && (
+                <div className="flex items-center gap-4 text-white/90">
+                  <div className="flex items-center gap-1.5">
+                    <svg className="w-3.5 h-3.5 text-red-300" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.293 7.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L10 4.414l-3.293 3.293a1 1 0 01-1.414 0z" clipRule="evenodd" /></svg>
+                    <span className="text-base font-bold">{Math.round(today.temperatureMax)}°</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <svg className="w-3.5 h-3.5 text-blue-300" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M14.707 12.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L10 15.586l3.293-3.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                    <span className="text-base font-bold">{Math.round(today.temperatureMin)}°</span>
+                  </div>
+                  <span className="text-xs text-white/40 ml-1">
+                    {updatedAgo <= 1 ? "Updated just now" : `Updated ${updatedAgo} min ago`}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* 5-day forecast strip */}
+        <div className="grid grid-cols-5 gap-px bg-black/20">
+          {daily.map((day, i) => (
+            <div key={day.date} className="bg-white/10 backdrop-blur-sm px-2 py-4 text-center">
+              <div className="text-[11px] sm:text-xs text-white/50 font-semibold uppercase tracking-wider mb-1">
+                {i === 0 ? "Today" : getDayOfWeek(day.date)}
+              </div>
+              <div className="text-2xl sm:text-3xl mb-1">{getWeatherIcon(day.weatherCode, true)}</div>
+              <div className="text-sm font-bold text-white">
+                {Math.round(day.temperatureMax)}° <span className="text-white/50 font-normal">{Math.round(day.temperatureMin)}°</span>
+              </div>
+              {day.precipitationProbabilityMax > 0 && (
+                <div className="text-[11px] text-blue-200 mt-0.5">
+                  💧 {day.precipitationProbabilityMax}%
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* CTA */}
+      <div className="text-center mt-8">
+        <Link
+          to="/weather"
+          className="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-white font-semibold px-8 py-3.5 rounded-full shadow-lg hover:shadow-xl transition-all"
+        >
+          View Full Forecast
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </Link>
+      </div>
+    </div>
   );
 }

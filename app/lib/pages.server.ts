@@ -150,7 +150,7 @@ export async function updatePageContent(
 /** Reserved slugs that custom pages cannot use */
 const RESERVED_SLUGS = new Set([
   "home", "listings", "dining", "lodging", "experiences", "hiking", "transportation",
-  "parks", "golf", "news", "contact", "admin", "api", "listing", "category",
+  "parks", "golf", "news", "contact", "weather", "admin", "api", "listing", "category",
   "directory", "sitemap.xml", "robots.txt", "llms.txt",
 ]);
 

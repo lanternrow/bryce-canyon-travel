@@ -22,6 +22,9 @@ export default [
   // Contact page
   route("contact", "routes/contact.tsx"),
 
+  // Weather page
+  route("weather", "routes/weather.tsx"),
+
   // News / Blog index
   route("news", "routes/news.tsx"),
 
@@ -70,6 +73,7 @@ export default [
     route("pages/homepage", "routes/admin-homepage.tsx"),
     route("pages/news", "routes/admin-news-page.tsx"),
     route("pages/contact", "routes/admin-contact-page.tsx"),
+    route("pages/weather", "routes/admin-weather-page.tsx"),
     route("pages/directory/:slug", "routes/admin-directory-page.tsx", {
       id: "admin-directory-page",
     }),

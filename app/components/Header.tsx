@@ -15,6 +15,7 @@ const defaultNavLinks: NavLink[] = [
   { label: "Plan Your Trip", href: "/transportation", openInNewTab: false, children: [
     { label: "View All Listings", href: "/listings", openInNewTab: false },
     { label: "Transportation", href: "/transportation", openInNewTab: false },
+    { label: "Weather", href: "/weather", openInNewTab: false },
   ]},
   { label: "News", href: "/news", openInNewTab: false, children: [] },
 ];

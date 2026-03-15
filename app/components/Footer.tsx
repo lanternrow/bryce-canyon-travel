@@ -28,6 +28,7 @@ const EXPLORE_LINKS = [
   { label: "Lodging", href: "/lodging" },
   { label: "Dining", href: "/dining" },
   { label: "Transportation", href: "/transportation" },
+  { label: "Weather", href: "/weather" },
 ];
 
 export default function Footer({ settings, menuItems }: { settings?: FooterSettings; menuItems?: ResolvedMenuItem[] | null }) {

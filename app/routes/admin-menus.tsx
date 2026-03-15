@@ -515,17 +515,28 @@ export default function AdminMenus() {
 
                   {addTab === "page" && (
                     <div className="space-y-1 max-h-48 overflow-y-auto">
-                      {/* Always show Home first */}
-                      <button
-                        type="button"
-                        onClick={() => addPageItem("", "Home")}
-                        className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors flex items-center justify-between"
-                      >
-                        <span>Home</span>
-                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                        </svg>
-                      </button>
+                      <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold px-3 pt-1">Core Pages</p>
+                      {[
+                        { slug: "", label: "Home" },
+                        { slug: "weather", label: "Weather" },
+                        { slug: "news", label: "News" },
+                        { slug: "contact", label: "Contact" },
+                      ].map((sp) => (
+                        <button
+                          key={sp.slug || "_home"}
+                          type="button"
+                          onClick={() => addPageItem(sp.slug, sp.label)}
+                          className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors flex items-center justify-between"
+                        >
+                          <span>{sp.label}</span>
+                          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                          </svg>
+                        </button>
+                      ))}
+                      {(pages as any[]).length > 0 && (
+                        <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold px-3 pt-2">Custom Pages</p>
+                      )}
                       {(pages as any[]).length === 0 ? (
                         <p className="text-sm text-gray-400 py-2">
                           No published pages yet.{" "}
