@@ -111,6 +111,7 @@ export default function AdminSettings() {
   const [aiModel, setAiModel] = useState(s.ai_model || "claude-opus-4-20250514");
   const [npsApiKey, setNpsApiKey] = useState(s.nps_api_key || "");
   const [ridbApiKey, setRidbApiKey] = useState(s.ridb_api_key || "");
+  const [pexelsApiKey, setPexelsApiKey] = useState(s.pexels_api_key || "");
   const [mailchimpApiKey, setMailchimpApiKey] = useState(s.mailchimp_api_key || "");
   const [mailchimpServerPrefix, setMailchimpServerPrefix] = useState(s.mailchimp_server_prefix || "");
   const [mailchimpAudienceId, setMailchimpAudienceId] = useState(s.mailchimp_audience_id || "");
@@ -341,6 +342,11 @@ export default function AdminSettings() {
               <div className="space-y-5">
                 <h3 className="text-md font-semibold text-dark">Google Reviews</h3>
                 <div><label className="block text-sm font-medium text-gray-700 mb-1">Google Places API Key</label><input type="text" name="google_places_api_key" value={googlePlacesApiKey} onChange={(e) => setGooglePlacesApiKey(e.target.value)} placeholder="AIza..." className={`${ic} font-mono`} /><p className="text-xs text-gray-400 mt-1">Powers the Google Reviews display on listing pages. Get a key from the <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Google Cloud Console</a>.</p></div>
+              </div>
+              <hr className="border-gray-200" />
+              <div className="space-y-5">
+                <h3 className="text-md font-semibold text-dark">Stock Photos</h3>
+                <div><label className="block text-sm font-medium text-gray-700 mb-1">Pexels API Key</label><input type="password" name="pexels_api_key" value={pexelsApiKey} onChange={(e) => setPexelsApiKey(e.target.value)} placeholder="Your Pexels API key" className={`${ic} font-mono`} /><p className="text-xs text-gray-400 mt-1">Free from <a href="https://www.pexels.com/api/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">pexels.com/api</a>. Powers the stock photo search and import in the Media Library.</p></div>
               </div>
               <hr className="border-gray-200" />
               <div className="space-y-5">

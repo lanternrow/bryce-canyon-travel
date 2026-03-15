@@ -250,8 +250,15 @@ export interface SearchVolumeItem {
   monthly_searches: Array<{ month: number; year: number; search_volume: number }>;
 }
 
-interface SearchVolumeResult {
-  items: SearchVolumeItem[] | null;
+// Raw shape returned by /keywords_data/google_ads/search_volume/live
+interface SearchVolumeRawResult {
+  keyword: string;
+  search_volume: number;
+  competition: string; // "LOW" | "MEDIUM" | "HIGH"
+  competition_index: number; // 0-100
+  cpc: number;
+  high_top_of_page_bid: number;
+  monthly_searches: Array<{ month: number; year: number; search_volume: number }>;
 }
 
 export async function getSearchVolume(
@@ -262,7 +269,8 @@ export async function getSearchVolume(
   const cached = getCached<SearchVolumeItem[]>(cacheKey);
   if (cached) return cached;
 
-  const results = await dataforseoFetch<SearchVolumeResult>(
+  // The search_volume endpoint returns keyword objects directly in task.result[]
+  const raw = await dataforseoFetch<SearchVolumeRawResult>(
     "/keywords_data/google_ads/search_volume/live",
     [
       {
@@ -274,7 +282,15 @@ export async function getSearchVolume(
     creds
   );
 
-  const items = results.flatMap((r) => r.items || []);
+  const items: SearchVolumeItem[] = raw.map((r) => ({
+    keyword: r.keyword,
+    search_volume: r.search_volume ?? 0,
+    competition: r.competition_index != null ? r.competition_index / 100 : 0,
+    competition_level: typeof r.competition === "string" ? r.competition : "UNKNOWN",
+    cpc: r.cpc ?? r.high_top_of_page_bid ?? 0,
+    monthly_searches: r.monthly_searches ?? [],
+  }));
+
   setCache(cacheKey, items);
   return items;
 }
@@ -727,46 +743,38 @@ export interface LabsKeywordItem {
   monthly_searches: Array<{ month: number; year: number; search_volume: number }>;
 }
 
+// Labs endpoints return items in two possible shapes:
+// 1. Flat: { keyword, keyword_info, keyword_properties, serp_info, search_intent_info }
+// 2. Nested: { keyword_data: { keyword, keyword_info, ... } }
+// We handle both for compatibility.
 interface LabsKeywordResult {
   total_count: number;
   items_count: number;
-  items: Array<{
-    keyword_data: {
-      keyword: string;
-      keyword_info: {
-        search_volume: number;
-        competition: number;
-        cpc: number;
-        monthly_searches: Array<{ month: number; year: number; search_volume: number }>;
-      };
-      keyword_properties: {
-        keyword_difficulty: number;
-        core_keyword: string | null;
-      };
-      serp_info: {
-        serp_item_types: string[];
-        se_results_count: number;
-      } | null;
-      search_intent_info: {
-        main_intent: string | null;
-        foreign_intent: string[];
-      } | null;
-    };
-    depth?: number;
-  }>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  items: Array<Record<string, any>>;
 }
 
 function mapLabsKeywordItems(result: LabsKeywordResult | undefined): LabsKeywordItem[] {
-  return (result?.items || []).map((item) => ({
-    keyword: item.keyword_data.keyword,
-    search_volume: item.keyword_data.keyword_info?.search_volume ?? 0,
-    competition: item.keyword_data.keyword_info?.competition ?? 0,
-    cpc: item.keyword_data.keyword_info?.cpc ?? 0,
-    keyword_difficulty: item.keyword_data.keyword_properties?.keyword_difficulty ?? 0,
-    intent: item.keyword_data.search_intent_info?.main_intent ?? null,
-    serp_features: item.keyword_data.serp_info?.serp_item_types ?? [],
-    monthly_searches: item.keyword_data.keyword_info?.monthly_searches ?? [],
-  }));
+  const rawItems = result?.items || [];
+  if (rawItems.length === 0) return [];
+
+  return rawItems
+    .map((item) => {
+      // Support both flat and nested (keyword_data) structures
+      const data = item.keyword_data ?? item;
+      if (!data || !data.keyword) return null;
+      return {
+        keyword: data.keyword as string,
+        search_volume: (data.keyword_info?.search_volume ?? 0) as number,
+        competition: (data.keyword_info?.competition ?? 0) as number,
+        cpc: (data.keyword_info?.cpc ?? 0) as number,
+        keyword_difficulty: (data.keyword_properties?.keyword_difficulty ?? 0) as number,
+        intent: (data.search_intent_info?.main_intent ?? null) as string | null,
+        serp_features: (data.serp_info?.serp_item_types ?? []) as string[],
+        monthly_searches: (data.keyword_info?.monthly_searches ?? []) as Array<{ month: number; year: number; search_volume: number }>,
+      };
+    })
+    .filter((item): item is LabsKeywordItem => item !== null);
 }
 
 export async function getKeywordSuggestions(

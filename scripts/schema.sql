@@ -241,6 +241,10 @@ CREATE TABLE IF NOT EXISTS media (
   caption TEXT,
   description TEXT,
   folder_id INTEGER REFERENCES media_folders(id) ON DELETE SET NULL,
+  photographer_name TEXT,
+  photographer_url TEXT,
+  source TEXT,
+  source_id TEXT,
   uploaded_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

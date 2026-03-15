@@ -22,6 +22,7 @@ import { uploadToR2, deleteFromR2, isR2Configured } from "../lib/storage.server"
 import { formatShortDate } from "../lib/format";
 import { toast } from "sonner";
 import { siteConfig } from "../lib/site-config";
+import PexelsModal from "../components/PexelsModal";
 
 export function meta() {
   return [{ title: `Media Library | Admin | ${siteConfig.siteName}` }];
@@ -914,7 +915,7 @@ function EditPanel({
     navigator.clipboard.writeText(item.url);
   };
 
-  const handleAiGenerate = async (field: "filename" | "alt") => {
+  const handleAiGenerate = async (field: "filename" | "alt" | "title" | "caption" | "description" | "all") => {
     if (!item.url || item.url.startsWith("/placeholder")) return;
     setAiLoadingField(field);
     try {
@@ -925,21 +926,43 @@ function EditPanel({
           imageUrl: item.url,
           currentFilename: filename,
           field,
+          source: item.source || null,
+          photographerName: item.photographer_name || null,
         }),
       });
       const data = await res.json();
       if (data.error) {
-        alert(data.error);
+        toast.error(data.error);
       } else {
-        if (field === "filename" && data.filename) setFilename(data.filename);
-        if (field === "alt" && data.altText) setAltText(data.altText);
+        if (data.filename) setFilename(data.filename);
+        if (data.altText) setAltText(data.altText);
+        if (data.title) setTitle(data.title);
+        if (data.caption) setCaption(data.caption);
+        if (data.description) setDescription(data.description);
       }
     } catch {
-      alert("AI generation failed. Please try again.");
+      toast.error("AI generation failed. Please try again.");
     } finally {
       setAiLoadingField(null);
     }
   };
+
+  const AiPillButton = ({ aiField, label }: { aiField: "filename" | "alt" | "title" | "caption" | "description" | "all"; label?: string }) => (
+    <button
+      type="button"
+      onClick={() => handleAiGenerate(aiField)}
+      disabled={aiLoadingField !== null}
+      className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium text-violet-600 bg-violet-50 rounded-full hover:bg-violet-100 transition-colors disabled:opacity-50 disabled:cursor-wait"
+      title={`AI-generate ${aiField}`}
+    >
+      {aiLoadingField === aiField ? (
+        <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+      ) : (
+        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" /></svg>
+      )}
+      {label || "AI Generate"}
+    </button>
+  );
 
   return (
     <>
@@ -980,25 +1003,43 @@ function EditPanel({
             </div>
           )}
 
+          {/* AI Generate All + Source Attribution */}
+          {item.url && !item.url.startsWith("/placeholder") && (
+            <button
+              type="button"
+              onClick={() => handleAiGenerate("all")}
+              disabled={aiLoadingField !== null}
+              className="w-full py-2 px-4 bg-violet-500 text-white text-sm font-medium rounded-lg hover:bg-violet-600 transition-colors disabled:opacity-50 disabled:cursor-wait flex items-center justify-center gap-2"
+            >
+              {aiLoadingField === "all" ? (
+                <><svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>Generating All Fields...</>
+              ) : (
+                <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" /></svg>AI Generate All Text Fields</>
+              )}
+            </button>
+          )}
+
+          {/* Pexels Attribution */}
+          {item.source === "pexels" && item.photographer_name && (
+            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+              <div className="text-xs font-semibold text-emerald-800 mb-1">Pexels Attribution</div>
+              <div className="text-xs text-emerald-700">
+                Photo by{" "}
+                {item.photographer_url ? (
+                  <a href={item.photographer_url} target="_blank" rel="noopener noreferrer" className="font-medium underline hover:text-emerald-900">{item.photographer_name}</a>
+                ) : (
+                  <span className="font-medium">{item.photographer_name}</span>
+                )}{" "}on Pexels
+              </div>
+            </div>
+          )}
+
           {/* Filename (editable for SEO) */}
           <div>
             <div className="flex items-center justify-between mb-1">
               <label className="block text-xs font-medium text-gray-500">Filename</label>
               {item.url && !item.url.startsWith("/placeholder") && (
-                <button
-                  type="button"
-                  onClick={() => handleAiGenerate("filename")}
-                  disabled={aiLoadingField === "filename"}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium text-violet-600 bg-violet-50 rounded-full hover:bg-violet-100 transition-colors disabled:opacity-50 disabled:cursor-wait"
-                  title="AI-generate SEO filename"
-                >
-                  {aiLoadingField === "filename" ? (
-                    <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
-                  ) : (
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" /></svg>
-                  )}
-                  AI Generate
-                </button>
+                <AiPillButton aiField="filename" />
               )}
             </div>
             <input
@@ -1094,7 +1135,10 @@ function EditPanel({
 
           {/* Editable fields */}
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Title</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-medium text-gray-500">Title</label>
+              {item.url && !item.url.startsWith("/placeholder") && <AiPillButton aiField="title" />}
+            </div>
             <input
               type="text"
               value={title}
@@ -1111,20 +1155,7 @@ function EditPanel({
                 Alt Text <span className="text-primary">*</span>
               </label>
               {item.url && !item.url.startsWith("/placeholder") && (
-                <button
-                  type="button"
-                  onClick={() => handleAiGenerate("alt")}
-                  disabled={aiLoadingField === "alt"}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium text-violet-600 bg-violet-50 rounded-full hover:bg-violet-100 transition-colors disabled:opacity-50 disabled:cursor-wait"
-                  title="AI-generate SEO alt text"
-                >
-                  {aiLoadingField === "alt" ? (
-                    <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
-                  ) : (
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" /></svg>
-                  )}
-                  AI Generate
-                </button>
+                <AiPillButton aiField="alt" />
               )}
             </div>
             <input
@@ -1140,7 +1171,10 @@ function EditPanel({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Caption</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-medium text-gray-500">Caption</label>
+              {item.url && !item.url.startsWith("/placeholder") && <AiPillButton aiField="caption" />}
+            </div>
             <textarea
               rows={2}
               value={caption}
@@ -1151,7 +1185,10 @@ function EditPanel({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Description</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-medium text-gray-500">Description</label>
+              {item.url && !item.url.startsWith("/placeholder") && <AiPillButton aiField="description" />}
+            </div>
             <textarea
               rows={3}
               value={description}
@@ -1215,6 +1252,7 @@ export default function AdminMedia() {
   const [gridColumns, setGridColumns] = useState<MediaGridColumns>(3);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [rangeAnchorIndex, setRangeAnchorIndex] = useState<number | null>(null);
+  const [pexelsOpen, setPexelsOpen] = useState(false);
 
   // ── Drag-and-drop state ──
   const [dragOverId, setDragOverId] = useState<number | "unfiled" | null>(null);
@@ -1494,16 +1532,28 @@ export default function AdminMedia() {
           {/* Page header */}
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-3xl font-bold text-dark">Media Library</h1>
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="px-4 py-2 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-colors inline-flex items-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Upload Files
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setPexelsOpen(true)}
+                className="px-4 py-2 bg-white text-gray-700 font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors inline-flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                Stock Photos
+              </button>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="px-4 py-2 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-colors inline-flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Upload Files
+              </button>
+            </div>
           </div>
 
           {/* Search bar */}
@@ -1783,6 +1833,17 @@ export default function AdminMedia() {
           onClose={() => setEditingId(null)}
         />
       )}
+
+      {/* Pexels Stock Photo Modal */}
+      <PexelsModal
+        isOpen={pexelsOpen}
+        onClose={() => setPexelsOpen(false)}
+        onImported={() => {
+          // Trigger a page reload to refresh the media list
+          window.location.reload();
+        }}
+        folderId={typeof currentFolder === "string" && currentFolder !== "unfiled" ? Number(currentFolder) : null}
+      />
     </div>
   );
 }

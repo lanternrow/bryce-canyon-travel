@@ -368,6 +368,7 @@ export async function action({ request, params }: Route.ActionArgs) {
     zip: (formData.get("zip") as string) || undefined,
     phone: (formData.get("phone") as string) || undefined,
     has_no_phone: formData.get("has_no_phone") === "on",
+    has_no_google_place_id: formData.get("has_no_google_place_id") === "on",
     email: (formData.get("email") as string) || undefined,
     website: (formData.get("website") as string) || undefined,
     price_range: priceRange,
@@ -401,6 +402,7 @@ export async function action({ request, params }: Route.ActionArgs) {
       phone: data.phone || null,
       has_no_phone: data.has_no_phone || false,
       google_place_id: data.google_place_id || null,
+      has_no_google_place_id: data.has_no_google_place_id || false,
       city: data.city || null,
       category_id: data.category_id || null,
       location_id: data.location_id || null,
@@ -732,6 +734,7 @@ export default function AdminListingEdit() {
       phone: listing?.phone,
       has_no_phone: listing?.has_no_phone,
       google_place_id: listing?.google_place_id,
+      has_no_google_place_id: listing?.has_no_google_place_id,
       city: listing?.city,
       category_id: listing?.category_id,
       location_id: listing?.location_id,
@@ -778,6 +781,7 @@ export default function AdminListingEdit() {
       phone: getVal("phone"),
       has_no_phone: getChecked("has_no_phone"),
       google_place_id: getVal("google_place_id"),
+      has_no_google_place_id: getChecked("has_no_google_place_id"),
       city: getVal("city"),
       category_id: catId,
       location_id: getVal("location_id"),
@@ -1405,6 +1409,16 @@ export default function AdminListingEdit() {
                   Google's Place ID Finder
                 </a>.
               </p>
+              <label className="mt-2 inline-flex items-center gap-2 text-xs text-gray-600">
+                <input
+                  type="checkbox"
+                  name="has_no_google_place_id"
+                  defaultChecked={listing?.has_no_google_place_id || false}
+                  onChange={revalidatePublishCheck}
+                  className="rounded border-gray-300"
+                />
+                <span>No Google Place ID available</span>
+              </label>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>

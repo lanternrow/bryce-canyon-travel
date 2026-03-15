@@ -10,6 +10,7 @@ export const siteConfig = {
   siteName: "BRYCE CANYON TRAVEL",
   siteUrl: "https://brycecanyon.travel",
   contactEmail: "info@brycecanyon.travel",
+  filePrefix: "bct",
 
   // ── Destination ────────────────────────────────
   parkName: "Bryce Canyon National Park",

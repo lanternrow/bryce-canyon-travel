@@ -35,6 +35,7 @@ export function checkPublishRequirements(listing: {
   phone?: string | null;
   has_no_phone?: boolean | null;
   google_place_id?: string | null;
+  has_no_google_place_id?: boolean | null;
   city?: string | null;
   category_id?: number | string | null;
   location_id?: number | string | null;
@@ -86,9 +87,9 @@ export function checkPublishRequirements(listing: {
       : []),
     {
       key: "google_place_id",
-      label: "Google Place ID",
-      met: Boolean(listing.google_place_id && listing.google_place_id.trim().length > 0),
-      detail: "A Google Place ID is required for review integration.",
+      label: "Google Place ID (or mark N/A)",
+      met: Boolean(listing.google_place_id && listing.google_place_id.trim().length > 0) || Boolean(listing.has_no_google_place_id),
+      detail: "Add a Google Place ID or check \"No Google Place ID available.\"",
     },
     {
       key: "city",

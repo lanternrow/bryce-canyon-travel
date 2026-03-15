@@ -15,6 +15,7 @@ import { buildMediaMetadata } from "../lib/media-helpers.server";
 import { formatPageTitle, getSiteName } from "../lib/title-template";
 import { getSystemPage } from "../lib/pages.server";
 import { siteConfig } from "../lib/site-config";
+import { buildDirectorySchema } from "../lib/schema";
 
 // ---------------------------------------------------------------------------
 // Helper: extract directory type from URL path
@@ -68,6 +69,13 @@ export function meta({ data, matches }: Route.MetaArgs) {
   if (seoOverrides?.ogImage) {
     tags.push({ property: "og:image", content: seoOverrides.ogImage });
     tags.push({ name: "twitter:image", content: seoOverrides.ogImage });
+  }
+
+  // JSON-LD: ItemList for directory pages
+  const listings = (data as any)?.listings || [];
+  const totalCount = (data as any)?.totalCount || 0;
+  if (slug && listings.length > 0) {
+    tags.push({ "script:ld+json": buildDirectorySchema(slug, listings, totalCount) } as any);
   }
 
   // Noindex per content type (from admin settings)

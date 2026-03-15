@@ -57,6 +57,7 @@ export interface Listing {
   lng?: number;
   phone?: string;
   has_no_phone?: boolean;
+  has_no_google_place_id?: boolean;
   email?: string;
   website?: string;
   featured_image?: string;

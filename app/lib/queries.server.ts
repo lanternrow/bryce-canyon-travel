@@ -460,8 +460,8 @@ function isMissingHasNoPhoneColumnError(error: unknown): boolean {
 export async function createListing(data: Partial<Listing>) {
   try {
     const result = await sql`
-      INSERT INTO listings (type, name, slug, tagline, description, category_id, location_id, address, city, state, zip, phone, has_no_phone, email, website, price_range, status, is_featured, google_place_id, featured_image, gallery, meta_title, meta_description, focus_keyphrase, google_maps_uri, google_primary_type, google_types, lat, lng)
-      VALUES (${data.type!}, ${data.name!}, ${data.slug!}, ${data.tagline || null}, ${data.description || null}, ${data.category_id || null}, ${data.location_id || null}, ${data.address || null}, ${data.city || null}, ${data.state || "UT"}, ${data.zip || null}, ${data.phone || null}, ${data.has_no_phone ?? false}, ${data.email || null}, ${data.website || null}, ${data.price_range || null}, ${data.status || "draft"}, ${data.is_featured || false}, ${data.google_place_id || null}, ${data.featured_image || null}, ${data.gallery || []}, ${data.meta_title ?? null}, ${data.meta_description ?? null}, ${data.focus_keyphrase ?? null}, ${data.google_maps_uri ?? null}, ${data.google_primary_type ?? null}, ${data.google_types ?? null}, ${data.lat ?? null}, ${data.lng ?? null})
+      INSERT INTO listings (type, name, slug, tagline, description, category_id, location_id, address, city, state, zip, phone, has_no_phone, email, website, price_range, status, is_featured, google_place_id, has_no_google_place_id, featured_image, gallery, meta_title, meta_description, focus_keyphrase, google_maps_uri, google_primary_type, google_types, lat, lng)
+      VALUES (${data.type!}, ${data.name!}, ${data.slug!}, ${data.tagline || null}, ${data.description || null}, ${data.category_id || null}, ${data.location_id || null}, ${data.address || null}, ${data.city || null}, ${data.state || "UT"}, ${data.zip || null}, ${data.phone || null}, ${data.has_no_phone ?? false}, ${data.email || null}, ${data.website || null}, ${data.price_range || null}, ${data.status || "draft"}, ${data.is_featured || false}, ${data.google_place_id || null}, ${data.has_no_google_place_id ?? false}, ${data.featured_image || null}, ${data.gallery || []}, ${data.meta_title ?? null}, ${data.meta_description ?? null}, ${data.focus_keyphrase ?? null}, ${data.google_maps_uri ?? null}, ${data.google_primary_type ?? null}, ${data.google_types ?? null}, ${data.lat ?? null}, ${data.lng ?? null})
       RETURNING *
     `;
     return result[0] as unknown as Listing;
@@ -495,6 +495,7 @@ export async function updateListing(id: string, data: Partial<Listing>) {
         zip = ${"zip" in data ? (data.zip ?? null) : sql`zip`},
         phone = ${"phone" in data ? (data.phone ?? null) : sql`phone`},
         has_no_phone = COALESCE(${data.has_no_phone ?? null}, has_no_phone),
+        has_no_google_place_id = COALESCE(${data.has_no_google_place_id ?? null}, has_no_google_place_id),
         email = ${"email" in data ? (data.email ?? null) : sql`email`},
         website = ${"website" in data ? (data.website ?? null) : sql`website`},
         price_range = ${"price_range" in data ? (data.price_range ?? null) : sql`price_range`},
@@ -1690,10 +1691,10 @@ export async function getMedia(options?: { limit?: number; search?: string; fold
   return sql`SELECT * FROM media ORDER BY uploaded_at DESC LIMIT ${limit}`;
 }
 
-export async function createMedia(data: { filename: string; url: string; mime_type?: string; size_bytes?: number; width?: number; height?: number; alt_text?: string; title?: string; caption?: string; description?: string; folder_id?: number | null }) {
+export async function createMedia(data: { filename: string; url: string; mime_type?: string; size_bytes?: number; width?: number; height?: number; alt_text?: string; title?: string; caption?: string; description?: string; folder_id?: number | null; photographer_name?: string | null; photographer_url?: string | null; source?: string | null; source_id?: string | null }) {
   const result = await sql`
-    INSERT INTO media (filename, url, mime_type, size_bytes, width, height, alt_text, title, caption, description, folder_id)
-    VALUES (${data.filename}, ${data.url}, ${data.mime_type || null}, ${data.size_bytes || null}, ${data.width || null}, ${data.height || null}, ${data.alt_text || null}, ${data.title || null}, ${data.caption || null}, ${data.description || null}, ${data.folder_id ?? null})
+    INSERT INTO media (filename, url, mime_type, size_bytes, width, height, alt_text, title, caption, description, folder_id, photographer_name, photographer_url, source, source_id)
+    VALUES (${data.filename}, ${data.url}, ${data.mime_type || null}, ${data.size_bytes || null}, ${data.width || null}, ${data.height || null}, ${data.alt_text || null}, ${data.title || null}, ${data.caption || null}, ${data.description || null}, ${data.folder_id ?? null}, ${data.photographer_name ?? null}, ${data.photographer_url ?? null}, ${data.source ?? null}, ${data.source_id ?? null})
     RETURNING *
   `;
   return result[0];

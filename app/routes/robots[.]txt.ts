@@ -21,7 +21,27 @@ Allow: /
 Disallow: /admin
 Disallow: /api/
 
-Sitemap: ${baseUrl}/sitemap.xml`
+# AI Crawlers — welcome
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+Sitemap: ${baseUrl}/sitemap.xml
+
+# LLM-readable site summary
+# See https://llmstxt.org
+llms.txt: ${baseUrl}/llms.txt`
     : `User-agent: *
 Disallow: /`;
 

@@ -28,6 +28,16 @@ function stripHtml(html: string): string {
   return html.replace(/<[^>]*>/g, "").trim();
 }
 
+/** Convert a bare URL to an ImageObject when possible */
+function toImageObject(url: string | null | undefined): Record<string, unknown> | undefined {
+  if (!url) return undefined;
+  return {
+    "@type": "ImageObject",
+    url,
+    // width/height omitted — Bing/Google will fetch & validate from the URL
+  };
+}
+
 // ── Schema @type mapping ─────────────────────
 
 const LISTING_TYPE_TO_SCHEMA: Record<string, string> = {
@@ -35,6 +45,8 @@ const LISTING_TYPE_TO_SCHEMA: Record<string, string> = {
   lodging: "LodgingBusiness",
   experiences: "TouristAttraction",
   hiking: "TouristAttraction",
+  parks: "Park",
+  golf: "GolfCourse",
   transportation: "LocalBusiness",
 };
 
@@ -43,10 +55,31 @@ const LISTING_TYPE_LABELS: Record<string, string> = {
   lodging: "Lodging",
   experiences: "Experiences",
   hiking: "Hiking",
+  parks: "Parks & Landscapes",
+  golf: "Golf Courses",
   transportation: "Transportation",
 };
 
 // ── Shared nodes ─────────────────────────────
+
+export function buildOrganizationSchema() {
+  return {
+    "@type": "Organization",
+    "@id": `${SITE_URL}/#organization`,
+    name: SITE_NAME,
+    url: SITE_URL,
+    description: siteConfig.defaults.schemaDescription,
+    logo: {
+      "@type": "ImageObject",
+      url: `${SITE_URL}/logo.png`,
+    },
+    contactPoint: {
+      "@type": "ContactPoint",
+      email: siteConfig.contactEmail,
+      contactType: "customer service",
+    },
+  };
+}
 
 export function buildWebSiteSchema() {
   return {
@@ -55,6 +88,7 @@ export function buildWebSiteSchema() {
     url: SITE_URL,
     name: SITE_NAME,
     description: siteConfig.defaults.schemaDescription,
+    publisher: { "@id": `${SITE_URL}/#organization` },
     potentialAction: {
       "@type": "SearchAction",
       target: {
@@ -99,6 +133,81 @@ function mapBusinessHours(hours: any[]): any[] | undefined {
   return specs.length > 0 ? specs : undefined;
 }
 
+// ── Homepage schema (Organization + TouristDestination) ──
+
+export function buildHomepageSchema() {
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      buildOrganizationSchema(),
+      buildWebSiteSchema(),
+      {
+        "@type": "TouristDestination",
+        "@id": `${SITE_URL}/#destination`,
+        name: siteConfig.parkName,
+        description: siteConfig.defaults.homeSeoDescription,
+        url: SITE_URL,
+        geo: {
+          "@type": "GeoCoordinates",
+          latitude: siteConfig.mapCenter.lat,
+          longitude: siteConfig.mapCenter.lng,
+        },
+        containedInPlace: {
+          "@type": "AdministrativeArea",
+          name: siteConfig.regionName,
+          addressCountry: "US",
+        },
+        touristType: [
+          "Hikers",
+          "Nature lovers",
+          "Families",
+          "Adventure travelers",
+          "Photographers",
+          "Stargazers",
+        ],
+      },
+    ],
+  };
+}
+
+// ── Directory page schema (ItemList) ─────────
+
+export function buildDirectorySchema(
+  directoryType: string,
+  listings: any[],
+  totalCount: number,
+) {
+  const typeLabel = LISTING_TYPE_LABELS[directoryType] || capitalize(directoryType);
+  const canonicalUrl = `${SITE_URL}/${directoryType}`;
+
+  const itemList: Record<string, unknown> = {
+    "@type": "ItemList",
+    "@id": `${canonicalUrl}/#itemlist`,
+    name: `${typeLabel} near ${siteConfig.parkName}`,
+    url: canonicalUrl,
+    numberOfItems: totalCount,
+    itemListElement: listings.slice(0, 20).map((listing: any, i: number) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: listing.name,
+      url: `${SITE_URL}/listing/${listing.type}/${listing.slug}`,
+    })),
+  };
+
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      buildOrganizationSchema(),
+      buildWebSiteSchema(),
+      buildBreadcrumbs([
+        { name: "Home", url: SITE_URL },
+        { name: typeLabel },
+      ]),
+      itemList,
+    ],
+  };
+}
+
 // ── Listing schema (LocalBusiness family) ────
 
 export function buildListingSchema(
@@ -127,9 +236,10 @@ export function buildListingSchema(
       || stripHtml(listing.description).slice(0, 250);
   }
 
-  // Image
-  if (listing.featured_image) {
-    entity.image = listing.featured_image;
+  // Image (as ImageObject)
+  const img = toImageObject(listing.featured_image);
+  if (img) {
+    entity.image = img;
   }
 
   // Telephone
@@ -189,6 +299,7 @@ export function buildListingSchema(
   return {
     "@context": "https://schema.org",
     "@graph": [
+      buildOrganizationSchema(),
       buildWebSiteSchema(),
       buildBreadcrumbs([
         { name: "Home", url: SITE_URL },
@@ -212,15 +323,16 @@ export function buildBlogPostSchema(post: any) {
     url: canonicalUrl,
     mainEntityOfPage: { "@type": "WebPage", "@id": canonicalUrl },
     isPartOf: { "@id": `${SITE_URL}/#website` },
-    author: {
-      "@type": "Organization",
-      name: SITE_NAME,
-      url: SITE_URL,
-    },
+    author: { "@id": `${SITE_URL}/#organization` },
     publisher: {
       "@type": "Organization",
+      "@id": `${SITE_URL}/#organization`,
       name: SITE_NAME,
       url: SITE_URL,
+      logo: {
+        "@type": "ImageObject",
+        url: `${SITE_URL}/logo.png`,
+      },
     },
   };
 
@@ -239,9 +351,10 @@ export function buildBlogPostSchema(post: any) {
     article.dateModified = post.published_at;
   }
 
-  // Image
-  if (post.featured_image) {
-    article.image = post.featured_image;
+  // Image (as ImageObject)
+  const img = toImageObject(post.featured_image);
+  if (img) {
+    article.image = img;
   }
 
   // Category
@@ -264,6 +377,7 @@ export function buildBlogPostSchema(post: any) {
   return {
     "@context": "https://schema.org",
     "@graph": [
+      buildOrganizationSchema(),
       buildWebSiteSchema(),
       buildBreadcrumbs([
         { name: "Home", url: SITE_URL },

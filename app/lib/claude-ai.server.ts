@@ -95,62 +95,103 @@ function enforceMaxLength(text: string, maxLen: number): string {
 }
 
 /**
- * Generate SEO-optimized filename and alt text for an image using Claude Vision.
+ * Generate SEO-optimized image metadata using Claude Vision.
  *
- * Filename format: zion-travel-[12-15 descriptive/keyword words separated by hyphens].ext
- * Alt text: 15-20 words, grammatically sound, with select keywords woven in naturally.
+ * Supports generating: filename, alt text, title, caption, description.
+ * Field parameter: "filename" | "alt" | "title" | "caption" | "description" | "both" | "all"
+ * "both" = filename + alt, "all" = all five fields.
+ *
+ * Automatically appends photographer credit for stock photo sources (pexels, unsplash).
  */
 export async function generateImageMeta(input: {
   imageUrl: string;
   currentFilename?: string;
-  field: "filename" | "alt" | "both";
-}): Promise<{ filename?: string; altText?: string } | null> {
+  field: "filename" | "alt" | "title" | "caption" | "description" | "both" | "all";
+  source?: string | null;
+  photographerName?: string | null;
+}): Promise<{ filename?: string; altText?: string; title?: string; caption?: string; description?: string } | null> {
   const client = await getAnthropicClient();
   if (!client) return null;
 
   const model = await getAiModel();
   const keywordContext = await buildKeywordContext();
 
-  const { imageUrl, currentFilename, field } = input;
+  const { imageUrl, currentFilename, field, source, photographerName } = input;
 
   // Detect file extension from current filename or URL
   const extMatch = (currentFilename || imageUrl).match(/\.([a-zA-Z0-9]+)(?:\?|$)/);
   const ext = extMatch ? extMatch[1].toLowerCase() : "jpg";
 
-  const filenamePrefix = siteConfig.siteName.toLowerCase().replace(/\s+/g, "-");
+  const filePrefix = (siteConfig as any).filePrefix || siteConfig.siteName.toLowerCase().replace(/\s+/g, "-");
+
+  // Determine which fields to generate
+  const fields = new Set<string>();
+  if (field === "all") { fields.add("filename"); fields.add("alt"); fields.add("title"); fields.add("caption"); fields.add("description"); }
+  else if (field === "both") { fields.add("filename"); fields.add("alt"); }
+  else { fields.add(field); }
+
+  // Build prompt sections for requested fields
+  const promptSections: string[] = [];
+
+  if (fields.has("filename")) {
+    promptSections.push(
+      `FILENAME: A descriptive, SEO-friendly filename. Rules:`,
+      `  - Start with "${filePrefix}-"`,
+      `  - 12-15 hyphenated descriptive words after the prefix`,
+      `  - All lowercase, no file extension`,
+      `  - Example: ${filePrefix}-red-rock-canyon-overlook-sunset-hiking-trail-scenic-landscape`
+    );
+  }
+  if (fields.has("alt")) {
+    promptSections.push(
+      `ALT: Descriptive alt text. Rules:`,
+      `  - 15-20 words`,
+      `  - Do NOT start with "Image of", "Photo of", "Picture of", or similar`,
+      `  - Describe what is shown clearly for accessibility`
+    );
+  }
+  if (fields.has("title")) {
+    promptSections.push(
+      `TITLE: A concise image title. Rules:`,
+      `  - 5-10 words, Title Case`,
+      `  - Descriptive but brief`
+    );
+  }
+  if (fields.has("caption")) {
+    promptSections.push(
+      `CAPTION: An engaging caption. Rules:`,
+      `  - 15-25 words, single sentence`,
+      `  - Engaging and informative`
+    );
+  }
+  if (fields.has("description")) {
+    promptSections.push(
+      `DESCRIPTION: A detailed description. Rules:`,
+      `  - 2-3 sentences, 40-60 words total`,
+      `  - Provide context and detail about the image`
+    );
+  }
+
+  const fieldLabels = Array.from(fields).map((f) => f.toUpperCase());
+  const formatLine = fieldLabels.map((f) => `${f}: <${f.toLowerCase()} here>`).join("\n");
+
   const systemPrompt = `You are an expert SEO image optimizer for ${siteConfig.siteName} (${siteConfig.siteUrl.replace("https://", "")}), a travel directory website focused on ${siteConfig.parkName} and the surrounding ${siteConfig.regionName.toLowerCase()} region.
 
 You will be shown an image. Your job is to generate SEO-optimized metadata for it.
 
 ${keywordContext}
 
-FILENAME RULES:
-- Must start with "${filenamePrefix}-"
-- Followed by 12-15 descriptive words separated by hyphens
-- Words should describe the image content and include relevant SEO keywords from the keyword list
-- All lowercase, no special characters, hyphens only
-- Do NOT include the file extension — just the stem
-- Be specific and descriptive about what is actually in the image
-- Example: ${filenamePrefix}-red-rock-canyon-overlook-sunset-hiking-trail-${siteConfig.regionName.toLowerCase().replace(/\s+/g, "-")}-national-park-scenic-landscape
+Generate the following fields for the image:
 
-ALT TEXT RULES:
-- Must be exactly 15-20 words total
-- Must be a grammatically correct, natural English sentence or phrase
-- Describe what is visually in the image
-- Weave in select keywords from the keyword list where they fit naturally
-- NO keyword stuffing — readability and accuracy come first
-- Do not start with "Image of" or "Photo of" — just describe the scene directly
+${promptSections.join("\n")}
 
-IMPORTANT OUTPUT FORMAT:
-Respond with EXACTLY this format, nothing else:
-
-FILENAME: [the filename stem without extension]
-ALT: [the alt text]`;
+Respond ONLY in this exact format (one field per line, no extra text):
+${formatLine}`;
 
   try {
     const response = await client.messages.create({
       model,
-      max_tokens: 300,
+      max_tokens: 500,
       temperature: 0.5,
       system: systemPrompt,
       messages: [
@@ -163,7 +204,7 @@ ALT: [the alt text]`;
             },
             {
               type: "text",
-              text: `Analyze this image and generate an SEO-optimized ${field === "filename" ? "filename" : field === "alt" ? "alt text" : "filename and alt text"} for it.${currentFilename ? ` Current filename: ${currentFilename}` : ""}`,
+              text: `Analyze this image and generate the requested metadata.${currentFilename ? ` Current filename: ${currentFilename}` : ""}`,
             },
           ],
         },
@@ -174,22 +215,41 @@ ALT: [the alt text]`;
     if (!textBlock || textBlock.type !== "text") return null;
 
     const fullText = textBlock.text;
-    const result: { filename?: string; altText?: string } = {};
+    const result: { filename?: string; altText?: string; title?: string; caption?: string; description?: string } = {};
 
-    const filenameMatch = fullText.match(/FILENAME:\s*(.+?)(?:\n|$)/);
-    const altMatch = fullText.match(/ALT:\s*(.+?)(?:\n|$)/);
-
-    if (filenameMatch && (field === "filename" || field === "both")) {
-      let stem = filenameMatch[1].trim().toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
-      // Ensure it starts with the site filename prefix
-      if (!stem.startsWith(filenamePrefix + "-")) {
-        stem = filenamePrefix + "-" + stem;
+    if (fields.has("filename")) {
+      const match = fullText.match(/FILENAME:\s*(.+?)(?:\n|$)/i);
+      if (match) {
+        let stem = match[1].trim().toLowerCase().replace(/\.[a-z0-9]+$/, "").replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+        if (!stem.startsWith(filePrefix + "-")) stem = filePrefix + "-" + stem;
+        result.filename = `${stem}.${ext}`;
       }
-      result.filename = `${stem}.${ext}`;
+    }
+    if (fields.has("alt")) {
+      const match = fullText.match(/ALT:\s*(.+?)(?:\n|$)/i);
+      if (match) result.altText = match[1].trim().replace(/^["']|["']$/g, "");
+    }
+    if (fields.has("title")) {
+      const match = fullText.match(/TITLE:\s*(.+?)(?:\n|$)/i);
+      if (match) result.title = match[1].trim().replace(/^["']|["']$/g, "");
+    }
+    if (fields.has("caption")) {
+      const match = fullText.match(/CAPTION:\s*(.+?)(?:\n|$)/i);
+      if (match) result.caption = match[1].trim().replace(/^["']|["']$/g, "");
+    }
+    if (fields.has("description")) {
+      const match = fullText.match(/DESCRIPTION:\s*(.+?)(?:\n|$)/i);
+      if (match) result.description = match[1].trim().replace(/^["']|["']$/g, "");
     }
 
-    if (altMatch && (field === "alt" || field === "both")) {
-      result.altText = altMatch[1].trim();
+    // Append photographer credit for stock photo sources
+    const isStockSource = source && ["pexels", "unsplash"].includes(source);
+    if (isStockSource && photographerName) {
+      const sourceName = source!.charAt(0).toUpperCase() + source!.slice(1);
+      const credit = `Image by ${photographerName}`;
+      if (result.title) result.title = `${result.title} | ${credit}`;
+      if (result.altText) result.altText = `${result.altText} | ${credit}`;
+      if (result.description) result.description = `${result.description} ${credit} on ${sourceName}.`;
     }
 
     return result;

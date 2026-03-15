@@ -11,6 +11,7 @@ import { formatPageTitle, getSiteName } from "../lib/title-template";
 import { getNewsArticlePath } from "../lib/news-url";
 import { siteConfig } from "../lib/site-config";
 import { cfHero, cfCard } from "../lib/image-utils";
+import { buildHomepageSchema } from "../lib/schema";
 
 // ---------------------------------------------------------------------------
 // Defaults (used when DB has no overrides)
@@ -184,6 +185,9 @@ export function meta({ data, matches }: Route.MetaArgs) {
     tags.push({ property: "og:image", content: ogImage });
     tags.push({ name: "twitter:image", content: ogImage });
   }
+
+  // JSON-LD: Organization + WebSite + TouristDestination
+  tags.push({ "script:ld+json": buildHomepageSchema() } as any);
 
   // Preload hero image for faster LCP
   const heroImage = (data as any)?.content?.hero?.bg_image;
