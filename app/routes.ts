@@ -116,8 +116,10 @@ export default [
   route("api/link-search", "routes/api.link-search.ts"),
   route("api/newsletter-subscribe", "routes/api.newsletter-subscribe.ts"),
   route("api/submit-images", "routes/api.submit-images.ts"),
+  route("api/admin/media/pexels", "routes/api.admin.media.pexels.ts"),
 
   // Sitemap & SEO
+  route("logo.png", "routes/logo[.]png.ts"),
   route("sitemap.xml", "routes/sitemap[.]xml.ts"),
   route("sitemap-pages.xml", "routes/sitemap-pages[.]xml.ts"),
   route("sitemap-listings.xml", "routes/sitemap-listings[.]xml.ts"),
