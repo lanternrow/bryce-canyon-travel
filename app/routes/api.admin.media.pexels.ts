@@ -1,26 +1,11 @@
 import { requireAuth } from "../lib/auth.server";
-import { getSettings, createMedia, findMediaFolderBySlug, createMediaFolder } from "../lib/queries.server";
+import { getSettings, findMediaFolderBySlug, createMediaFolder } from "../lib/queries.server";
 import { uploadToR2 } from "../lib/storage.server";
 import { generateImageMeta } from "../lib/claude-ai.server";
 import sql from "../lib/db.server";
 
 const STOCK_FOLDER_NAME = "Stock Images";
 const STOCK_FOLDER_SLUG = "stock-images";
-
-/**
- * Get or create the "Stock Images" folder.
- * First import creates it; all subsequent imports reuse it.
- */
-async function getOrCreateStockFolder(): Promise<number> {
-  const existing = await findMediaFolderBySlug(STOCK_FOLDER_SLUG);
-  if (existing) return existing.id;
-
-  const created = await createMediaFolder({
-    name: STOCK_FOLDER_NAME,
-    slug: STOCK_FOLDER_SLUG,
-  });
-  return (created as any).id;
-}
 
 /**
  * GET /api/admin/media/pexels — Search Pexels photos
@@ -122,7 +107,6 @@ export async function action({ request }: { request: Request }) {
     altText,
     originalWidth,
     originalHeight,
-    folderId,
   } = body || {};
 
   if (!imageUrl || !pexelsId) {
@@ -182,7 +166,17 @@ export async function action({ request }: { request: Request }) {
   const uploaded = await uploadToR2(file);
 
   // Auto-sort into "Stock Images" folder (creates folder on first import)
-  const resolvedFolderId = await getOrCreateStockFolder();
+  let resolvedFolderId: number | null = null;
+  const existingFolder = await findMediaFolderBySlug(STOCK_FOLDER_SLUG);
+  if (existingFolder) {
+    resolvedFolderId = existingFolder.id;
+  } else {
+    const created = await createMediaFolder({
+      name: STOCK_FOLDER_NAME,
+      slug: STOCK_FOLDER_SLUG,
+    });
+    resolvedFolderId = (created as any).id;
+  }
 
   const rows = await sql`
     INSERT INTO media (
